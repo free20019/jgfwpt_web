@@ -1,0 +1,179 @@
+<!--车辆运行排行-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false" @select="handleVehicleSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false" @select="handleCompanyNameSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="BA_NAME" label="公司" min-width="240"></el-table-column>
+				<el-table-column prop="CP" label="车牌号码" min-width="240"></el-table-column>
+				<el-table-column prop="VEHI_SIM" label="SIM卡号" min-width="240"></el-table-column>
+				<el-table-column prop="TJCS" label="营运次数" width="180"></el-table-column>
+				<el-table-column prop="JINE" label="营运金额" width="180"></el-table-column>
+				<el-table-column prop="ZLC" label="总里程" width="180"></el-table-column>
+				<el-table-column prop="SZLC" label="载客里程" width="180"></el-table-column>
+				<el-table-column prop="KSLC" label="空驶里程" width="180"></el-table-column>
+				<el-table-column prop="RATE" label="实载率" width="180"></el-table-column>
+				<el-table-column prop="YSSC" label="载客时间" width="180"></el-table-column>
+				<el-table-column prop="DHSJ" label="载客等候时间" width="180"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "VehicleRunningRanking",
+		data() {
+			return {
+				query: {
+					companyName: '',
+					vehicle: '',
+					stime: '',
+					etime: ''
+				},
+				lpNumberLoading: false,
+				lpNumberOption: [],
+				table: {
+					loading: false,
+					data: [
+						{
+							gosi: '临安众安客运出租汽车有限公司',
+							cphm: '浙AAT157',
+							simk: '15824142762',
+							clis: 68,
+							yyus: 43,
+							cclv: '63.24%',
+							yycs: 448,
+							yyje: 6998,
+							zlic: 3192,
+							zklc: 1743,
+							kslc: 1449,
+							szlv: '54.60%',
+							zksj: 4948,
+							zkdhsj: 1990,
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getVehicleRunningRanking();
+				this.getCompany();
+				this.getVehicle();
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getVehicleRunningRanking(){
+				const {companyName,vehicle, stime, etime} = this.query;
+				axios.get('/industryOperation/getVehicleRunningRanking', {
+					baseURL: this.baseURL,
+					params: {
+						companyName:companyName,
+						cardNumber:vehicle,
+						stime: stime && moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')
+					}
+				}).then(res => {
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+				})
+			},
+			getCompany() {
+				axios.get('/common/company', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					this.company = _.map(res.data, item => item.COMP_NAME) || [];
+				}).catch(function (error) {
+					console.log(error);
+				});
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(this.company, item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			getVehicle: function () {
+				axios.get('/common/vehicle', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					this.vehicle = _.map(res.data, item => item.VEHICLE_NO) || [];
+				}).catch(function (error) {
+					console.log(error);
+				});
+			},
+			queryVehicleSearch(query, cd) {
+				if (query.length < 3) cd(null);
+				else {
+					setTimeout(() => {
+						cd(_.map(_.filter(this.vehicle, item => item.indexOf(query) > -1), item => {
+							return {label: item, value: item}
+						}))
+					}, 200);
+				}
+			},
+			/*事件*/
+			handleVehicleSelect(item) {},
+			handleCompanyNameSelect(item) {},
+			handleQueryClick() {
+				this.getVehicleRunningRanking();
+			},
+			handleExportClick() {},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tw-unit': TWUnit
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

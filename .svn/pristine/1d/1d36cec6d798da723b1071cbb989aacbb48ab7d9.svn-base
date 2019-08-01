@@ -1,0 +1,192 @@
+import Vue from 'vue'
+import Vuex from 'vuex'
+import axios from 'axios'
+import _ from 'underscore'
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    licensePlateNumber: [],
+    companyName: [],
+    companyRealName: [],
+    captureCompanyName: [],
+    depotName: [],
+    jobNumber: [],
+    faultTypeList: [
+      {id: '1', label: '有定位无营运'},
+      {id: '2', label: '有营运无定位'},
+      {id: '3', label: '有抓拍无定位无营运'},
+      {id: '4', label: '7天无定位无营运'},
+      {id: '5', label: '空重车无变化'},
+      {id: '6', label: '视频黑屏'},
+      {id: '7', label: '视频移位'},
+      {id: '8', label: '视频断线'}
+    ],
+    regionList: [
+      {label: '全部区域', value: ''},
+      {label: '西湖风景区', value: '西湖风景区'},
+      {label: '富阳区', value: '富阳区'},
+      {label: '下沙区', value: '下沙区'},
+      {label: '拱墅区', value: '拱墅区'},
+      {label: '淳安县', value: '淳安县'},
+      {label: '临安区', value: '临安区'},
+      {label: '桐庐县', value: '桐庐县'},
+      {label: '江干区', value: '江干区'},
+      {label: '滨江区', value: '滨江区'},
+      {label: '下城区', value: '下城区'},
+      {label: '萧山区', value: '萧山区'},
+      {label: '西湖区', value: '西湖区'},
+      {label: '建德市', value: '建德市'},
+      {label: '上城区', value: '上城区'},
+      {label: '余杭区', value: '余杭区'},
+      {label: '市辖区', value: '市辖区'}
+    ],
+    regionRealList: [
+      {label: '全部区域', value: ''},
+      {label: '主城区', value: '主城区'},
+      {label: '余杭区', value: '余杭区'},
+      {label: '萧山区', value: '萧山区'},
+      {label: '临安区', value: '临安区'},
+      {label: '富阳区', value: '富阳区'},
+      {label: '淳安区', value: '淳安区'},
+      {label: '建德市', value: '建德市'}
+    ],
+    userType: [
+      {label: '全部用户类型', value: ''},
+      {label: '个体', value: '个体'},
+      {label: '有限责任（公司）', value: '有限责任（公司）'},
+      {label: '私营', value: '私营'},
+      {label: '中外合作', value: '中外合作'},
+      {label: '中外合资', value: '中外合资'},
+      {label: '国有', value: '国有'},
+      {label: '有限责任（法人独资）', value: '有限责任（法人独资）'},
+      {label: '集体', value: '集体'},
+      {label: '股份有限（公司）', value: '股份有限（公司）'},
+      {label: '股份制', value: '股份制'}
+    ],
+    dispatchType: [
+      {value: '0', label: '全部'},
+      {value: '1', label: '场站扬招'},
+      {value: '2', label: '手持监控'}
+    ],
+    approvalStatus: [
+      {value: '0', label: '未审核'},
+      {value: '1', label: '审核通过'},
+      {value: '2', label: '审核未通过'},
+    ],
+    returnArea: [
+      {label: '全部区域', value: ''},
+      {label: '主城区', value: '主城区'},
+      {label: '余杭区', value: '余杭区'},
+      {label: '萧山区', value: '萧山区'},
+      {label: '临安区', value: '临安区'},
+      {label: '富阳区', value: '富阳区'},
+      {label: '淳安区', value: '淳安区'},
+      {label: '建德市', value: '建德市'}
+    ]
+  },
+  mutations: {
+    setLicensePlateNumber(state, dataList) {
+      state.licensePlateNumber = dataList;
+    },
+    setCompanyName(state, dataList) {
+      state.companyName = dataList;
+    },
+    setCompanyRealName(state, dataList) {
+      state.companyRealName = dataList;
+    },
+    setCaptureCompanyName(state, dataList) {
+      state.captureCompanyName = dataList;
+    },
+    setDepotName(state, dataList) {
+      state.depotName = dataList;
+    },
+    setJobNumber(state, dataList) {
+      state.jobNumber = dataList;
+    },
+    setReturnArea(state, dataList) {
+      state.returnArea = dataList
+    }
+  },
+  getters: {
+    getLPNumber: state => state.licensePlateNumber,
+    getCompanyName: state => state.companyName,
+    getCompanyRealName: state => state.companyRealName,
+    getCaptureCompanyName: state => state.captureCompanyName,
+    getDepotName: state => state.depotName,
+    getJobNumber: state => state.jobNumber,
+    getFaultType: state => state.faultTypeList,
+    getRegion: state => state.regionList,
+    getRegionReal: state => state.regionRealList,
+    getUserType: state => state.userType,
+    getDispatchType: state => state.dispatchType,
+    getApprovalStatus: state => state.approvalStatus,
+    getReturnArea: state => state.returnArea
+  },
+  actions: {
+    getLicensePlateNumberList({commit}, baseURL) {
+      axios.get('common/vehicle', {baseURL}).then(res => {
+        commit('setLicensePlateNumber', _.map(res.data, item => {
+          return {label: item.VEHICLE_NO, value: item.VEHICLE_NO}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getCompanyNameList({commit}, baseURL) {
+      axios.get('common/company', {baseURL}).then(res => {
+        commit('setCompanyName', _.map(res.data, item => {
+          return {value: item.COMP_NAME, label: item.COMP_NAME}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getCompanyRealNameList({commit}, baseURL) {
+      axios.get('servicePlatformUsage/getCompanyName', {baseURL}).then(res => {
+        commit('setCompanyRealName', _.map(res.data, item => {
+          return {value: item.REAL_NAME, label: item.REAL_NAME}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getCaptureCompanyNameList({commit}, baseURL) {
+      axios.get('common/capturecompany', {baseURL}).then(res => {
+        commit('setCaptureCompanyName', _.map(res.data, item => {
+          return {value: item.COMPANY_NAME, label: item.COMPANY_NAME}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getDepotNameList({commit}, baseURL) {
+      axios.get('common/station', {baseURL}).then(res => {
+        commit('setDepotName', _.map(res.data, item => {
+          return {id: item.ADDRESS, label: item.ADDRESS}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getJobNumberList({commit}, baseURL) {
+      axios.get('common/number', {baseURL}).then(res => {
+        commit('setJobNumber', _.map(res.data, item => {
+          return {id:item.USER_ID,value:item.USER_NAME,label:item.USER_NAME}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getReturnAreaList({commit}, baseURL) {
+      axios.get('common/area', {baseURL}).then(res => {
+        commit('setReturnArea', [{label: '全部区域', value: ''}, ..._.map(res.data, item => {
+          return {id: item.id, label: item.AREA_NAME}
+        })] || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    }
+  }
+})

@@ -1,0 +1,64 @@
+<!--安装情况统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-query-panel">
+			<el-table :data="table1.data" v-loading="table1.loading" border size="small" height="81px" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column prop="clzs" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="yazs" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="wazs" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="azzb" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+			<hr class="tw-horizontal-rule">
+			<el-table :data="table2.data" v-loading="table2.loading" border size="small" height="calc(100% - 101px)" style="width: 100%">
+				<el-table-column prop="qymc" label="企业名称" width="300"></el-table-column>
+				<el-table-column prop="clzs" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="yazs" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="wazs" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="azzb" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+		</div>
+	</div>
+</template>
+
+<script>
+	export default {
+		name: "InstallationStatistics",
+		data() {
+			return {
+				table1: {
+					loading: false,
+					data: [
+						{
+							clzs: 427,
+							yazs: 382,
+							wazs: 45,
+							azzb: '89.46%'
+						}
+					]
+				},
+				table2: {
+					loading: false,
+					data: [
+						{
+							qymc: '浙江通信产业服务有限公司',
+							clzs: 427,
+							yazs: 382,
+							wazs: 45,
+							azzb: '89.46%'
+						}
+					]
+				}
+			}
+		},
+		methods: {
+			/*接口*/
+			/*事件*/
+		}
+	}
+</script>
+
+<style scoped>
+	.tw-query-panel {
+		height: 100%;
+	}
+</style>

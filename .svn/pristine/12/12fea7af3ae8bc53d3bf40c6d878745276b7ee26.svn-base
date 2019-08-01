@@ -1,0 +1,189 @@
+<!--OD流向图-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-amap class="tw-map-box" vid="regionMap" :amap-manager="map.amap" :zoom="map.zoom" :center="map.center">
+			<!--<el-amap-marker v-for="marker in map.markers" :position="marker"></el-amap-marker>-->
+			<!--<el-amap-polygon :path="positionArea"></el-amap-polygon>-->
+		</el-amap>
+		<div class="tw-map-query-panel">
+			<template v-if="mapPanel.display">
+				<div class="tw-map-query-header">
+					<tw-icon class="tw-map-query-close" icon="icon-shut-down" @click.native="handleMapPanelDisplay"></tw-icon>
+				</div>
+				<el-form :model="query" size="small" class="tw-map-query-bar">
+					<el-form-item>
+						<el-select class="tw-map-query-item" v-model="query.timePeriod" placeholder="时间段">
+							<el-option v-for="item in timePeriodOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+						</el-select>
+					</el-form-item>
+					<el-form-item>
+						<el-date-picker class="tw-map-query-item" v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+					</el-form-item>
+					<el-form-item>
+						<el-date-picker class="tw-map-query-item" v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+					</el-form-item>
+					<el-form-item>
+						<el-select class="tw-map-query-item" v-model="query.startPoint" placeholder="起点">
+							<el-option v-for="item in startPointOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+						</el-select>
+					</el-form-item>
+					<el-form-item>
+						<el-button class="tw-btn-block" type="primary" @click="handleQueryClick">查询</el-button>
+					</el-form-item>
+				</el-form>
+				<div class="tw-query-panel">
+					<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+						<el-table-column type="index" label="序号" width="60"></el-table-column>
+						<el-table-column prop="mdd" label="目的地" min-width="140"></el-table-column>
+						<el-table-column label="车辆数" width="140">
+							<template slot-scope="scope">
+								<tw-unit :data="scope.row.cls" unit="辆"></tw-unit>
+							</template>
+						</el-table-column>
+					</el-table>
+					<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+				</div>
+			</template>
+			<tw-icon v-else class="tw-map-query-show" icon="icon-search" @click.native="handleMapPanelDisplay"></tw-icon>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import TWIcon from '../../components/TWIcon'
+	import {AMapManager} from 'vue-amap'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "ODFlowStatistics",
+		data() {
+			return {
+				query: {
+					timePeriod: 0,
+					stime: '',
+					etime: '',
+					startPoint: 0
+				},
+				timePeriodOption: [
+					{label: '全天', value: 0},
+					{label: '23:00~2:00', value: 1}
+				],
+				startPointOption: [
+					{label: '火车东站', value: 0},
+					{label: '城站过车站', value: 1},
+					{label: '萧山机场', value: 2}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							mdd: '彭埠街道城东新城单元',
+							cls: 519
+						}
+					],
+					pageSize: 10,
+					currentPage: 1,
+					total: 0
+				},
+				map: {
+					amap: null,
+					zoom: 13,
+					center: [120.197521,30.24298],
+					markers: [],
+				},
+				mapPanel: {
+					display: true
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.map.amap = new AMapManager();
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			/*事件*/
+			handleMapPanelDisplay() {
+				this.mapPanel.display = !this.mapPanel.display;
+			},
+			handleQueryClick() {},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tw-unit': TWUnit,
+			'tw-icon': TWIcon
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-map {
+		&-query {
+			&-panel {
+				position: absolute;
+				top: 30px;
+				left: 50px;
+				max-height: calc(100% - 160px);
+				border: 1px solid #eeeeee;
+				border-radius: 4px;
+				box-shadow: 2px 2px 4px #aaaaaa;
+				background-color: #ffffff;
+				.el-form-item--mini.el-form-item, .el-form-item--small.el-form-item {
+					margin-bottom: 10px;
+					&:last-child {
+						margin-bottom: 0;
+					}
+				}
+				.tw-query-panel {
+					height: calc(100% - 225px);
+				}
+			}
+			&-close {
+				position: absolute;
+				top: 15px;
+				right: 5px;
+				padding: 5px;
+				transform: translateY(-50%);
+				cursor: pointer;
+				&:hover {
+					color: #e81123;
+				}
+			}
+			&-show {
+				padding: 10px;
+				cursor: pointer;
+				&:hover {
+					color: #409EFF;
+				}
+			}
+			&-bar {
+				position: static;
+				width: 400px;
+				padding-top: 30px;
+				border: none;
+				box-shadow: none;
+			}
+			&-item {
+				width: 100%;
+			}
+		}
+	}
+</style>

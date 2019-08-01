@@ -1,0 +1,197 @@
+<!--OD营运数据分析-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-select v-model="query.timePeriod" placeholder="时间段">
+					<el-option v-for="item in timePeriodOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.startPoint" placeholder="起点">
+					<el-option v-for="item in startPointOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="showcase" border size="small" height="81px" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column prop="TJCS" label="总营运次数/次" align="center"></el-table-column>
+				<el-table-column prop="CPHM" label="营运车辆数/辆" align="center"></el-table-column>
+				<el-table-column prop="YSSC" label="平均营运时长/分钟" align="center"></el-table-column>
+				<el-table-column prop="DHSJ" label="平均等候时间/分钟" align="center"></el-table-column>
+				<el-table-column prop="JINE" label="平均营收情况/元" align="center"></el-table-column>
+				<el-table-column prop="SZLC" label="平均实载里程/公里" align="center"></el-table-column>
+			</el-table>
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="calc(100% - 132px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="CPHM_NEW" label="车牌号码" min-width="140"></el-table-column>
+				<el-table-column prop="ZHONGDUANNO" label="终端编号" width="140"></el-table-column>
+				<el-table-column prop="YINGYUN" label="营运资格服务证" width="140"></el-table-column>
+				<el-table-column prop="SCSJ" label="上车时间" width="140"></el-table-column>
+				<el-table-column prop="XCSJ" label="下车时间" width="140"></el-table-column>
+				<el-table-column prop="JICHENG" label="计程/公里" width="140"></el-table-column>
+				<el-table-column prop="DENGHOU" label="等候时间/分钟" width="140"></el-table-column>
+				<el-table-column prop="JINE" label="交易金额/元" width="140"></el-table-column>
+				<el-table-column prop="KONGSHI" label="空驶/公里" width="140"></el-table-column>
+				<el-table-column prop="JIAOYITYPE" label="交易类型" width="140"></el-table-column>
+				<el-table-column prop="TAC" label="TAC交易认证码" width="140"></el-table-column>
+				<el-table-column prop="POS" label="POS机号" width="140"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "ODOperationDataAnalysis",
+		data() {
+			return {
+				query: {
+					timePeriod: 0,
+					stime: '',
+					etime: '',
+					startPoint: 0
+				},
+				timePeriodOption: [
+					{label: '全天', value: 0},
+					{label: '23:00~2:00', value: 1}
+				],
+				startPointOption: [
+					{label: '火车东站', value: 0},
+					{label: '城站火车站', value: 1},
+					{label: '萧山机场', value: 2}
+				],
+				showcase:[
+					{
+						zyycs: 1174,
+						yycls: 107,
+						pjyysc: 17.63,
+						pjdhsj: 4.47,
+						pjyyqk: 29.6,
+						pjszlc: 8.17,
+
+					}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							cphm: 'AT2259',
+							zdbh: '15224064203',
+							yyzg: '217315',
+							scsj: '2019-02-26 00:27:00',
+							xcsj: '2019-02-26 00:28:00',
+							jich: 0.8,
+							dhsj: 0,
+							jyje: 11,
+							kshi: 1,
+							jssj: '2019-02-26 00:01:57',
+							kaye: 'FFFFFF',
+							wydm: 65535,
+							klsh: -1,
+							blwe: -1,
+							zdjy: '',
+							yylx: 65535,
+							kalx: 255,
+							qblj: 255,
+							qdsj: 'FFFF',
+							ccsj: 'FFFFFF',
+							jyrz: 'FFFFFF',
+							posj: 'FFFFFFFF',
+							qybh: 22000122,
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getODOperationDataAnalysis();
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getODOperationDataAnalysis(){
+				this.table.loading = true;
+				const {timePeriod,startPoint,stime, etime} = this.query;
+                const {currentPage,pageSize} = this.table;
+				axios.get('industryOperation/getODOperationDataAnalysis', {
+					baseURL: this.baseURL,
+					params: {
+						SJD:timePeriod,
+						QD:startPoint,
+						stime: stime && moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: etime && moment(etime).format('YYYY-MM-DD HH:mm:ss'),
+                        currentPage:currentPage,
+                        pageSize:pageSize
+					}
+				}).then(res => {
+					this.showcase = res.data.tj
+					this.table.data = res.data.mx || [];
+                    this.table.total = res.data.count;
+					this.table.loading = false;
+				})
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getODOperationDataAnalysis();
+			},
+			handleExportClick() {
+				const {timePeriod,startPoint,stime, etime} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}industryOperation/getODOperationDataAnalysisExcel?SJD=${timePeriod}&QD=${startPoint}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {
+				});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+				this.getODOperationDataAnalysis();
+			}
+		},
+		components: {
+			'tw-unit': TWUnit
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

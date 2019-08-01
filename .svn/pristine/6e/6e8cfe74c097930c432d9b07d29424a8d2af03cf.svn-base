@@ -1,0 +1,77 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+import Home from './views/Home.vue'
+
+Vue.use(Router)
+
+export default new Router({
+  base: process.env.BASE_URL,
+  routes: [
+    {
+      path: '/',
+      name: 'index',
+			redirect: '/zdfx/zjgz',
+      component: () => import('./views/Index.vue'),
+			children: [
+				{
+					path: '/zdfx/zjgz',
+					name: 'dispatch',
+					component: () => import('./views/terminalAnalysis/HostFailure.vue')
+				},
+				{
+					path: '/zdfx/zixun',
+					name: 'advisory',
+					component: () => import('./views/About.vue')
+				},
+				{
+					path: '/zdfx/jifen',
+					name: 'integral',
+					component: () => import('./components/HelloWorld.vue')
+				},
+				{
+					path: '/oaxt/rxrz',
+					name: 'hotLineLog',
+					component: () => import('./views/About.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi1',
+					name: 'ceshi1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi2',
+					name: 'ceshi2',
+					component: () => import('./components/HelloWorld.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi3-1',
+					name: 'ceshi3-1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi3-2',
+					name: 'ceshi3-2',
+					component: () => import('./components/HelloWorld.vue'),
+				},
+				{
+					path: '/oaxt/gycs/gycs1',
+					name: 'ceshi1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/gycs/gycs2',
+					name: 'ceshi2',
+					component: () => import('./components/HelloWorld.vue'),
+				}
+			]
+    },
+    {
+      path: '/about',
+      name: 'about',
+      // route level code-splitting
+      // this generates a separate chunk (about.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
+    }
+  ]
+})

@@ -1,0 +1,144 @@
+<!--OD流向统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-select v-model="query.timePeriod" placeholder="时间段">
+					<el-option v-for="item in timePeriodOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.startPoint" placeholder="起点">
+					<el-option v-for="item in startPointOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="AREA_NAME" label="目的地" min-width="140"></el-table-column>
+				<el-table-column prop="COUNT_NUM" label="车辆数" width="140"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "ODFlowDiagram",
+		data() {
+			return {
+				query: {
+					timePeriod: 0,
+					stime: '',
+					etime: '',
+					startPoint: 0
+				},
+				timePeriodOption: [
+					{label: '全天', value: 0},
+					{label: '23:00~2:00', value: 1}
+				],
+				startPointOption: [
+					{label: '火车东站', value: 0},
+					{label: '城站过车站', value: 1},
+					{label: '萧山机场', value: 2}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							mdd: '彭埠街道城东新城单元',
+							cls: 265
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getTerminalInstalled();
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getTerminalInstalled(){
+				this.table.loading = true;
+				const {timePeriod, stime, etime,startPoint} = this.query;
+				axios.get('industryOperation/getODFlowStatistics', {
+					baseURL: this.baseURL,
+					params: {
+						SJD:timePeriod,
+						QD:startPoint,
+						stime: stime && moment(stime).format('YYYY-MM-DD 00:00:00'),
+						etime: etime && moment(etime).format('YYYY-MM-DD 23:59:59')
+					}
+				}).then(res => {
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getTerminalInstalled();
+			},
+			handleExportClick() {
+				const {timePeriod, stime, etime,startPoint} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}industryOperation/getODFlowStatisticsExcel?timePeriod=${timePeriod}&startPoint=${startPoint}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {
+				});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tw-unit': TWUnit
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

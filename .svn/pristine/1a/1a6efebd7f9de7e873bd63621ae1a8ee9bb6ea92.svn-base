@@ -1,0 +1,14 @@
+<!--报停管理-->
+<template>
+    <div class="tw-template-wrapper">保亭管理</div>
+</template>
+
+<script>
+    export default {
+        name: "ReportManage"
+    }
+</script>
+
+<style scoped>
+
+</style>

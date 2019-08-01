@@ -1,0 +1,195 @@
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-template-body">
+			<div class="tw-map">
+				<el-amap ref="map" vid="amap" :center="map.center" :zoom="map.zoom" :plugin="map.plugin" :events="map.events"></el-amap>
+			</div>
+		</div>
+		<div class="tw-template-footer">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 52px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column :resizable="false" width="60" align="center">
+					<template slot="header" slot-scope="scope">
+						<el-button size="mini" type="text" icon="el-icon-plus" @click="handleTableAddClick"></el-button>
+					</template>
+					<template slot-scope="scope">
+						<el-button size="mini" icon="el-icon-delete" type="text" @click="handleTableDeleteClick(scope.row)"></el-button>
+					</template>
+				</el-table-column>
+				<el-table-column type="index" label="序号" width="60" :resizable="false"></el-table-column>
+				<el-table-column prop="qymc" label="区域名称" width="280" show-overflow-tooltip></el-table-column>
+				<el-table-column prop="qyfw" label="区域范围" width="180" show-overflow-tooltip></el-table-column>
+				<el-table-column prop="qyms" label="区域描述" min-width="160" :resizable="false" show-overflow-tooltip></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+		<el-dialog :title="dialog.title" :visible.sync="dialog.display" width="800px" @closed="handleDialogClosed">
+			<div class="tw-template-layout">
+				<div class="tw-template-left">
+					<el-form ref="form" :model="dialog.form" size="small" label-width="80px">
+						<el-form-item label="区域名称">
+							<el-input v-model="dialog.form.areaName" placeholder="区域名称" style="width: 200px;"></el-input>
+						</el-form-item>
+						<el-form-item label="区域范围">
+							<el-input v-model="dialog.form.areaRange" readonly placeholder="区域范围" @focus="handleIntervalFocus" style="width: 200px;"></el-input>
+						</el-form-item>
+						<el-form-item label="区域描述">
+							<el-input v-model="dialog.form.areaDesc" placeholder="区域描述" style="width: 200px;" type="textarea"></el-input>
+						</el-form-item>
+					</el-form>
+				</div>
+				<div class="tw-template-body">
+					<el-amap ref="dialog-map" vid="dialog-amap" :center="dialog.map.center" :zoom="dialog.map.zoom" :plugin="dialog.map.plugin" :events="dialog.map.events">
+						<el-amap-polygon v-for="(polygon, index) in dialog.map.polygons" :vid="index" :path="polygon.path" :draggable="polygon.draggable" :events="polygon.events"></el-amap-polygon>
+					</el-amap>
+				</div>
+			</div>
+			<div slot="footer" class="dialog-footer">
+				<el-button @click="dialog.display = false">取 消</el-button>
+				<el-button type="primary" @click="handleDialogSaveClick">提 交</el-button>
+			</div>
+		</el-dialog>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import { AMapManager } from 'vue-amap';
+
+	export default {
+		name: "ReturnAreaSetting",
+		data() {
+			const _this = this;
+			return {
+				map: {
+					center: [120.170076, 30.277559],
+					zoom: 14,
+					events:{},
+					plugin:[]
+				},
+				table: {
+					loading: false,
+					data: [{
+						qymc: '西湖文化广场',
+						qyfw: '下场区',
+						qyms: '北冥有鱼，其名为鲲。鲲之大，不知其几千里也。化而为鸟，其名为鹏。鹏之背，不知其几千里也。怒而飞，其翼若垂天之云。是鸟也，海运则将徙于南冥。南冥者，天池也。',
+					}],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+				dialog: {
+					title: '',
+					display: false,
+					map: {
+						checked: false,
+						center: [120.170076, 30.277559],
+						zoom: 14,
+						polygons: [],
+						events:{
+							click(e) {
+								const {checked, polygons} = _this.dialog.map;
+								if (checked) {
+									let { lng, lat } = e.lnglat;
+									console.info('amap-click:', e, lng, lat)
+									if (polygons.length === 0) _this.dialog.map.polygons.push({
+										draggable: false,
+										path: [],
+										events: {}
+									});
+									console.info('amap-click:', polygons.length)
+									_this.dialog.map.polygons[polygons.length - 1].path.push([lng, lat]);
+								}
+							},
+							dblclick(e) {
+								const {checked, zoom} = _this.dialog.map;
+								if(checked){
+									const oldZoom = zoom;
+									_this.dialog.map.checked = false;
+									_this.dialog.map.zoom = oldZoom;
+									_this.dialog.form.areaRange = _.each(_this.dialog.map.polygons[0].path, item => item.toString().replace(',', ':')).toString().replace(',', ';').replace(':', ',')
+								}
+							}
+						},
+						plugin:[]
+					},
+					form: {
+						areaName: '',
+						areaRange: '',
+						areaDesc: ''
+					}
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage - 1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			/*事件*/
+			handleQueryClick() {},
+			handleTableAddClick() {
+				this.dialog.title = '添加回场';
+				this.dialog.display = true;
+			},
+			handleTableDeleteClick(item) {
+				console.info('handleTableEditClick:', item)
+			},
+			handleDialogSaveClick() {
+				this.dialog.display = false;
+			},
+			handleDialogClosed() {
+				this.dialog.title = '';
+				this.dialog.form.areaName = '';
+				this.dialog.form.areaRange = '';
+				this.dialog.form.areaDesc = '';
+			},
+			handleIntervalFocus() {
+				this.dialog.map.checked = true;
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	$footerHeader: 300px;
+	$leftWidth: 300px;
+	.tw-template {
+		&-layout {
+			position: relative;
+			height: 300px;
+			.tw-template-body {
+				width: calc(100% - #{$leftWidth});
+				height: 100%;
+				margin-left: $leftWidth;
+				border-bottom: none;
+			}
+		}
+		&-left{
+			width: $leftWidth;
+			height: 100%;
+		}
+
+		&-body{
+			height: calc(100% - #{$footerHeader} - 1px);
+			border-bottom: 1px solid #eeeeee;
+		}
+		&-footer{
+			height: $footerHeader;
+		}
+	}
+</style>

@@ -1,0 +1,245 @@
+<!--完好率统计分析-->
+<template>
+    <div class="tw-template-wrapper">
+        <div class="tw-template-body">
+            <el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+                <el-form-item>
+                    <el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+                                     :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"
+                                     @select="handleCompanyNameSelect"></el-autocomplete>
+                </el-form-item>
+                <el-form-item>
+                    <el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+                </el-form-item>
+                <el-form-item>
+                    <el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="handleQueryClick">查询</el-button>
+                    <el-button type="primary" @click="handleExportClick">导出</el-button>
+                </el-form-item>
+            </el-form>
+            <div class="tw-query-panel">
+                <el-table :data="table.data" v-loading="table.loading" border size="small" height="100%"
+                          style="width: 100%">
+                    <el-table-column type="index" label="序号" width="60"></el-table-column>
+                    <el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+                    <el-table-column prop="gzcls" label="故障车辆数" width="180"></el-table-column>
+                    <el-table-column prop="gzl" label="故障率" width="180"></el-table-column>
+                    <el-table-column prop="ywxcls" label="已维修车辆数" width="180"></el-table-column>
+                    <el-table-column prop="xcl" label="修车率" width="180"></el-table-column>
+                </el-table>
+            </div>
+        </div>
+        <div class="tw-template-right">
+            <v-chart class="vehicleChart" :options="vehicleChartOptions" ref="vehicleChart"/>
+        </div>
+    </div>
+</template>
+
+<script>
+    import _ from 'underscore'
+    import axios from 'axios'
+    import moment from 'moment'
+    import ECharts from 'vue-echarts'
+    import Malfunction from '../../components/TableColumn/Malfunction.vue'
+
+    export default {
+        name: "GoodRateStatistics",
+        data() {
+            return {
+                company: [],
+                dataLoading: false,
+                query: {
+                    companyName: '',
+                    stime: '',
+                    etime: ''
+                },
+                table: {
+                    loading: false,
+                    data: [
+                        {
+                            gsmc: '',
+                            gzcls: 464,
+                            gzl: 10.6,
+                            ywxcls: 300,
+                            xcl: 29.5
+                        },
+                        {
+                            gsmc: '',
+                            gzcls: 152,
+                            gzl: 14.1,
+                            ywxcls: 211,
+                            xcl: 22.3
+                        },
+                        {
+                            gsmc: '',
+                            gzcls: 214,
+                            gzl: 14.2,
+                            ywxcls: 160,
+                            xcl: 14.8
+                        }
+                    ]
+                },
+                vehicleChartOptions: {
+                    color: ['#19d4ae', '#fa6e86', '#5ab1ef'],
+                    tooltip: {
+                        show: true,
+                        trigger: 'item',
+                        formatter: "{a} <br/>{b} : {c} ({d}%)"
+                    },
+                    legend: {
+                        top: 60,
+                        left: 'center',
+                        data: ['已维修', '故障', '完好']
+                    },
+                    series: [
+                        {
+                            name: '车辆',
+                            type: 'pie',
+                            radius: '55%',
+                            center: ['50%', '50%'],
+                            data: [
+                                {name: '已维修', value: 3530},
+                                {name: '故障', value: 2923},
+                                {name: '完好', value: 1393}
+                            ],
+                            itemStyle: {
+                                emphasis: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        mounted() {
+            this.$nextTick(() => {
+                this.query.stime = moment(moment().format('YYYY-MM-DD 00:00:00'));
+                this.query.etime = moment(moment().format('YYYY-MM-DD 23:59:59'));
+                window.onresize = () => {
+                    this.$refs.vehicleChart.resize();
+                }
+            });
+        }, methods: {
+            /*接口*/
+            getCompany() {
+                axios.get('/common/company', {
+                    baseURL: this.baseURL,
+                    params: {}
+                }).then(res => {
+                    console.info(res.data);
+                    this.company = _.map(res.data, item => {
+                        return item.COMP_NAME
+                    }) || [];
+                })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            queryCompanyNameSearch(query, cb) {
+                cb(_.map(_.filter(this.company, item => item.indexOf(query) > -1), item => {
+                    return {label: item, value: item}
+                }));
+            },
+            /*事件*/
+            handleCompanyNameSelect(item) {
+            },
+            handleQueryClick() {
+                const {companyName, stime, etime} = this.query;
+                // this.table.loading = true;
+                axios.get('/terminal/goodrate', {
+                    baseURL: this.baseURL,
+                    params: {
+                        companyName,
+                        stime: moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+                        etime: moment(etime).format('YYYY-MM-DD HH:mm:ss')
+                    }
+                }).then(res => {
+                    console.info(res.data);
+                    let echart = res.data.echart[0];
+                    this.table.data = _.map(res.data.list, item => {
+                        return {gsmc: item.COMP_NAME, gzcls: item.GZZS, gzl: item.GZL, ywxcls: item.WXZS, xcl: item.XCL}
+                    });
+                    // console.info('1111111111111:', res.data.echart, _.filter(echart, (item, key) => (key === 'WXZS' || key === 'GZZS')))
+
+                    /*let newEchart = _.filter(_.map(echart, (item, key) => {
+                        console.info('key:', item, key)
+                        return key === 'WXZS' ? {name: '已维修', value: item} : (key === 'GZZS' ? {
+                            name: '故障',
+                            value: item
+                        } : null);
+                    }), (item, key) => (key === 'WXZS' || key === 'GZZS'))*/
+                    // newEchart.push({name: '完好', value: (echart.ZS - echart.GZZS)});
+                    // this.vehicleChartOptions.series.data = newEchart;
+                        console.info('2222:', this.vehicleChartOptions)
+                    // this.table.loading = false;
+                })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            handleExportClick() {
+                let startTime = '';
+                if (this.query.stime !== '' && this.query.stime !== null) {
+                    startTime = new Date(+new Date(this.query.stime) + 8 * 3600 * 1000).toISOString().replace(/T/g, ' ').replace(/\.[\d]{3}Z/, '');
+                }
+                let endTime = '';
+                if (this.query.etime !== '' && this.query.etime !== null) {
+                    endTime = new Date(+new Date(this.query.etime) + 8 * 3600 * 1000).toISOString().replace(/T/g, ' ').replace(/\.[\d]{3}Z/, '');
+                }
+                this.$confirm('是否需要导出?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    window.open(this.baseURL + "/terminal/goodratedc?companyName=" + this.query.companyName
+                        + "&stime=" + startTime
+                        + "&etime=" + endTime
+                    );
+                }).catch(() => {
+                });
+            }
+        },
+        components: {
+            Malfunction,
+            'v-chart': ECharts
+        }
+    }
+</script>
+
+<style lang="scss" scoped>
+    .tw-template {
+        &-wrapper {
+            overflow: hidden;
+        }
+
+        &-body {
+            width: calc(100% - 200px);
+        }
+
+        &-right {
+            right: -200px;
+            width: 400px;
+            background-color: #ffffff;
+            transition: box-shadow .5s ease, right .5s ease .2s;
+            z-index: 10;
+
+            &:hover {
+                right: 0;
+                box-shadow: -2px 0 6px #aaaaaa;
+            }
+        }
+    }
+
+    .vehicleChart {
+        width: 100%;
+        height: 100%;
+    }
+</style>

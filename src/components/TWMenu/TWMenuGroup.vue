@@ -1,0 +1,170 @@
+<template>
+	<div class="tw-menu-group">
+		<div class="tw-menu-title" :class="{active: hasActiveMenuPanel(data), open: hasOpenMenuPanel(data)}" @click="handlerMenuTitleClick(data)">
+			<tw-icon :icon="data.icon"></tw-icon>{{data.title}}
+			<tw-icon class="tw-suffix-icon" icon="el-icon-arrow-down"></tw-icon>
+		</div>
+		<div class="tw-menu-panel" :class="{open: hasOpenMenuPanel(data)}">
+			<template v-for="item in data.children">
+				<t-w-menu-group :data="item" :active.sync="active" :open="openPanelItem" @change-open="changeOpenPanel" v-if="item.children"></t-w-menu-group>
+				<tw-menu-item :data="item" :active.sync="active" @click.native="handlerMenuItemClick" v-else></tw-menu-item>
+			</template>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import TWMenuItem from './TWMenuItem'
+	import TWIcon from '../TWIcon'
+
+	export default {
+		name: "TWMenuGroup",
+		data() {
+			return {
+				openPanelItem: {},
+			}
+		},
+		props: {
+			data: Object,
+			active: String,
+			open: {}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				setTimeout(() => {
+					const menuList = this.data;
+					this.openPanelItem = _.map(_.filter(menuList.children, item => item.fullPath && this.selectRouterPath.indexOf(`${item.fullPath}`) === 0), item => {
+						return {id: item.id, title: item.title, fullPath: item.fullPath}
+					})[0] || {};
+				}, 0);
+			})
+		},
+		computed: {
+			selectRouterPath() {
+				return this.$route.path;
+			}
+		},
+		methods: {
+			changeOpenPanel(item) {
+				this.openPanelItem = item;
+				console.info('TWMenuGroup-changeOpenPanel:', item)
+			},
+			handlerMenuItemClick() {
+				this.openPanelItem = {};
+			},
+			handlerMenuTitleClick(item) {
+				console.info('TWMenuGroup-handlerMenuTitleClick:', item, this.open.id, this.open.fullPath, item.fullPath)
+				if (this.open.id && this.open.fullPath === item.fullPath) this.$emit('change-open', {});
+				else this.$emit('change-open', {id: item.id, title: item.title, fullPath: item.fullPath});
+			},
+			hasActiveMenuPanel(item) {
+				const routerPath = this.selectRouterPath;
+				return routerPath.indexOf(item.fullPath) === 0;
+			},
+			hasOpenMenuPanel(item) {
+				const active = this.active;
+				const openPanelItem = this.open;
+				return openPanelItem ? openPanelItem.fullPath === item.fullPath : active.indexOf(item.fullPath) === 0;
+			}
+		},
+		components: {
+			'tw-menu-item': TWMenuItem,
+			'tw-icon': TWIcon
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-menu {
+		&-group {
+			font-size: 16px;
+			/*&:hover {
+				& > .tw-menu {
+					&-title {
+						background-color: #336e90;
+						background-color: rgba(0, 0, 0, 0.2);
+					}
+					&-panel {
+						display: block;
+					}
+				}
+			}*/
+		}
+		&-title {
+			position: relative;
+			height: 40px;
+			padding-left: 10px;
+			padding-right: 10px;
+			line-height: 40px;
+			cursor: pointer;
+
+			&:hover {
+				color: #ffffff;
+				background-color: #4d89ab;
+				background-color: rgba(255, 255, 255, .2);
+			}
+
+			&.open {
+				color: #ffffff;
+				background-color: #336e90;
+				background-color: rgba(0, 0, 0, 0.15);
+				&.active {
+					background-color: #336e90;
+					background-color: rgba(0, 0, 0, 0.2);
+				}
+				.tw-suffix-icon {
+					transform: translateY(-50%) rotateZ(180deg);
+				}
+			}
+			.tw-suffix-icon {
+				position: absolute;
+				top: 50%;
+				right: 10px;
+				transform: translateY(-50%);
+				transition: all .3s ease;
+			}
+		}
+
+		&-panel {
+			display: none;
+			background-color: rgba(0, 0, 0, 0.1);
+			transition: all .5s ease;
+			&.open {
+				display: block;
+				border-top: 1px solid #34699a;
+				border-bottom: 1px solid #34699a;
+			}
+
+			.tw-menu {
+				&-title {
+					height: 40px;
+					padding-left: 25px;
+				}
+				&-item {
+					padding-left: 15px;
+					&:hover {
+						color: #ffffff;
+						background-color: rgba(255, 255, 255, 0.2);
+					}
+					&.active {
+						color: #ffffff;
+						background-color: rgba(255, 255, 255, 0.2);
+					}
+				}
+				&-panel {
+					.tw-menu {
+						&-item {
+							padding-left: 30px;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	.tw-icon {
+		width: 40px;
+		text-align: center;
+	}
+</style>

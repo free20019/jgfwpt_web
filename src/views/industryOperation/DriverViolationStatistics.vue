@@ -1,0 +1,246 @@
+<!--驾驶员违法统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="请输入车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-input v-model="query.partyName" placeholder="当事人姓名"></el-input>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.region" placeholder="区域">
+					<el-option v-for="item in getRegionReal" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="PARTY_NAME" label="当事人姓名" width="120"></el-table-column>
+				<el-table-column prop="AUTO_NUM1" label="车牌号码" width="100"></el-table-column>
+				<el-table-column prop="INTEGRAL1" label="扣分" width="80"></el-table-column>
+				<el-table-column prop="ILLEGAL_TIME1" label="违章时间" width="140"></el-table-column>
+				<el-table-column prop="LEGAL_TIME1" label="执法时间" width="140"></el-table-column>
+				<el-table-column prop="CASE_REASON" label="案件原因" min-width="340"></el-table-column>
+				<el-table-column prop="ORGAN" label="执法部门" width="180"></el-table-column>
+				<el-table-column prop="AREA" label="执法区域" width="180"></el-table-column>
+				<el-table-column prop="LIENCE_NUM" label="经营许可证号" width="120"></el-table-column>
+				<el-table-column label="操作" width="120">
+					<template slot-scope="scope">
+						<el-button class="tw-table-button" type="text" size="mini" icon="iconfont icon-search" @click="handleDetailsClick(scope.row)"></el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+		<el-dialog class="tw-dialog" :title="dialog.title" :visible.sync="dialog.display" width="960px" @closed="handleDialogClosed">
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">当事人基本信息</div>
+				<el-form :inline="true" :model="dialog.basicInfo" size="small" class="tw-query-bar" label-width="7em">
+					<el-form-item class="tw-query-item" label="姓名：">{{dialog.basicInfo.PARTY_NAME}}</el-form-item>
+					<el-form-item class="tw-query-item" label="证件号码：">{{dialog.basicInfo.PARTY_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="出生日期：">{{dialog.basicInfo.PARTY_BIRTHDAY1}}</el-form-item>
+					<el-form-item class="tw-query-item" label="联系电话：">{{dialog.basicInfo.PARTY_PHONE}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__2" label="通讯地址：">{{dialog.basicInfo.PARTY_ADDR}}</el-form-item>
+					<el-form-item class="tw-query-item" label="公司名称：">{{dialog.basicInfo.COM_NAME}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__2" label="公司地址：">{{dialog.basicInfo.COM_ADDR}}</el-form-item>
+					<el-form-item class="tw-query-item" label="营运许可证：">{{dialog.basicInfo.LIENCE_NUM}}</el-form-item>
+					<el-form-item class="tw-query-item" label="从业资格证：">{{dialog.basicInfo.CERTI_NUM}}</el-form-item>
+					<el-form-item class="tw-query-item" label="IC卡分值：">{{dialog.basicInfo.IC_SCORE}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card">
+				<div slot="header">违章信息</div>
+				<el-form :inline="true" :model="dialog.violationInfo" size="small" class="tw-query-bar" label-width="7em">
+					<el-form-item class="tw-query-item" label="执法机构：">{{dialog.violationInfo.ORGAN}}</el-form-item>
+					<el-form-item class="tw-query-item" label="执法部门：">{{dialog.violationInfo.AREA}}</el-form-item>
+					<el-form-item class="tw-query-item" label="执法人：">{{dialog.violationInfo.MARSHALS_NAME}}</el-form-item>
+					<el-form-item class="tw-query-item" label="案件类别：">{{dialog.violationInfo.CASE_CATEGORY}}</el-form-item>
+					<el-form-item class="tw-query-item" label="案件状态：">{{dialog.violationInfo.CASE_STATUS}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__3" label="案件原因：">{{dialog.violationInfo.CASE_REASON}}</el-form-item>
+					<el-form-item class="tw-query-item" label="扣分：">{{dialog.violationInfo.INTEGRAL1}}</el-form-item>
+					<el-form-item class="tw-query-item" label="罚款金额：">{{dialog.violationInfo.FINE}}</el-form-item>
+					<el-form-item class="tw-query-item" label="执法时间：">{{dialog.violationInfo.LEGAL_TIME1}}</el-form-item>
+					<el-form-item class="tw-query-item" label="违章时间：">{{dialog.violationInfo.ILLEGAL_TIME1}}</el-form-item>
+					<el-form-item class="tw-query-item" label="更新时间：">{{dialog.violationInfo.UPD_DATE1}}</el-form-item>
+					<el-form-item class="tw-query-item" label="更新人员：">{{dialog.violationInfo.UPD_PERSON}}</el-form-item>
+				</el-form>
+			</el-card>
+			<div slot="footer" class="dialog-footer">
+				<el-button @click="dialog.display = false">取 消</el-button>
+			</div>
+		</el-dialog>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "DriverViolationStatistics",
+		data() {
+			return {
+				query: {
+					vehicle: '',
+					partyName: '',
+					stime: '',
+					etime: '',
+					region:''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+				dialog: {
+					display: false,
+					title: '详情',
+					basicInfo: {},
+					violationInfo: {}
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getDriverIllegalStatistics();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber','getRegionReal']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getDriverIllegalStatistics(){
+				this.table.loading = true;
+				const {vehicle,partyName,stime,etime,region} = this.query;
+				const {currentPage,pageSize} = this.table;
+				axios.get('industryOperation/getDriverIllegalStatistics', {
+					baseURL: this.baseURL,
+					params: {
+						vehicle:vehicle,
+						partyName:partyName,
+						stime: stime && moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: etime && moment(etime).format('YYYY-MM-DD HH:mm:ss'),
+						region:region,
+						currentPage:currentPage,
+						pageSize:pageSize
+					}
+				}).then(res => {
+					console.log(res.data.count);
+					this.table.data = res.data.datas || [];
+					this.table.total = res.data.count;
+					this.table.loading = false;
+				})
+			},
+			queryVehicleSearch(query, cb) {
+				if(query.legth < 3) cb = null;
+				else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.table.currentPage = 1;
+				this.getDriverIllegalStatistics();
+			},
+			handleExportClick() {
+				const {vehicle,partyName,stime,etime,region} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}industryOperation/getDriverIllegalStatisticsExcel?vehicle=${vehicle}&region=${region}&partyName=${partyName}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {
+				});
+			},
+			handleDetailsClick(item) {
+				console.info('handleDetailsClick:', item)
+				this.dialog.display = true;
+				this.dialog.basicInfo = {
+					PARTY_NAME: item.PARTY_NAME,
+					PARTY_NUMBER: item.PARTY_NUMBER,
+					PARTY_BIRTHDAY1: item.PARTY_BIRTHDAY1,
+					PARTY_PHONE: item.PARTY_PHONE,
+					PARTY_ADDR: item.PARTY_ADDR,
+					COM_NAME: item.COM_NAME,
+					COM_ADDR: item.COM_ADDR,
+					LIENCE_NUM: item.LIENCE_NUM,
+					CERTI_NUM: item.CERTI_NUM,
+					IC_SCORE: item.IC_SCORE
+				};
+				this.dialog.violationInfo = {
+					ORGAN: item.ORGAN,
+					AREA: item.AREA,
+					MARSHALS_NAME: item.MARSHALS_NAME,
+					CASE_CATEGORY: item.CASE_CATEGORY,
+					CASE_STATUS: item.CASE_STATUS,
+					CASE_REASON: item.CASE_REASON,
+					INTEGRAL1: item.INTEGRAL1,
+					FINE: item.FINE,
+					LEGAL_TIME1: item.LEGAL_TIME1,
+					ILLEGAL_TIME1: item.ILLEGAL_TIME1,
+					UPD_DATE1: item.UPD_DATE1,
+					UPD_PERSON: item.UPD_PERSON
+				};
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+				this.getDriverIllegalStatistics();
+			},
+			handleDialogClosed() {}
+		},
+		components: {
+			'tw-unit': TWUnit
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-query {
+		&-bar {
+			border-bottom: none;
+		}
+		&-item {
+			width: 33.333333%;
+			margin-right: 0;
+			padding-right: 10px;
+			box-sizing: border-box;
+		}
+		&-item__2 {
+			width: 66.666666%;
+		}
+		&-item__3 {
+			width: 100%;
+		}
+	}
+</style>

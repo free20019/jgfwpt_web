@@ -1,0 +1,270 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export default new Router({
+  base: process.env.BASE_URL,
+  routes: [
+    {
+      path: '/',
+      name: 'index',
+			redirect: '/zdfx/zjgz',
+      component: () => import('./views/Index.vue'),
+			children: [
+				/*终端分析统计*/
+				{/*主机故障*/
+					path: '/zdfx/zjgz',
+					name: 'HostFailure',
+					component: () => import('./views/terminalAnalysis/HostFailure.vue')
+				},
+				{/*终端异常告警*/
+					path: '/zdfx/zdyc',
+					name: 'TerminalAbnormalAlarm',
+					component: () => import('./views/terminalAnalysis/TerminalAbnormalAlarm.vue')
+				},
+				{/*完好率统计*/
+					path: '/zdfx/whltj',
+					name: 'GoodRateStatistics',
+					component: () => import('./views/terminalAnalysis/GoodRateStatistics.vue')
+				},
+				{/*在线车辆统计*/
+					path: '/zdfx/clgl/zxcltj',
+					name: 'OnlineVehicleStatistics',
+					component: () => import('./views/terminalAnalysis/OnlineVehicleStatistics.vue')
+				},
+				{/*未上线车辆查询*/
+					path: '/zdfx/clgl/wsxclcx',
+					name: 'UnlistedVehicleInquiry',
+					component: () => import('./views/terminalAnalysis/UnlistedVehicleInquiry.vue')
+				},
+				{/*视频异常*/
+					path: '/zdfx/spyc',
+					name: 'VideoAnomaly',
+					component: () => import('./views/terminalAnalysis/VideoAnomaly.vue')
+				},
+				{/*维修工单*/
+					path: '/zdfx/wxgdcx',
+					name: 'RepairWorkOrderInquiry',
+					component: () => import('./views/terminalAnalysis/RepairWorkOrderInquiry.vue')
+				},
+				{/*主机故障历史记录*/
+					path: '/zdfx/zjgzlsjl',
+					name: 'HostFailureHistory',
+					component: () => import('./views/terminalAnalysis/HostFailureHistory.vue')
+				},
+				/*企业函件管理*/
+				{/*报停车辆管理*/
+					path: '/qyhj/btclgl',
+					name: 'ReportStopVehicleManage',
+					component: () => import('./views/enterpriseLetters/ReportStopVehicleManage.vue'),
+				},
+				{/*报停车辆管理*/
+					path: '/qyhj/btcltj',
+					name: 'ReportingVehicleStatistics',
+					component: () => import('./views/enterpriseLetters/ReportingVehicleStatistics.vue'),
+				},
+				/*工单管理统计*/
+				/*维护管理统计*/
+				{/*维修质量报告*/
+					path: '/wxgl/wxzlbg',
+					name: 'MaintenanceQualityReport',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceQualityReport.vue')
+				},
+				{/*维修记录查询*/
+					path: '/wxgl/wxjlcx',
+					name: 'MaintenanceRecordInquiry',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceRecordInquiry.vue')
+				},
+				{/*维修记录统计*/
+					path: '/wxgl/wxjltj',
+					name: 'MaintenanceRecordStatistics',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceRecordStatistics.vue')
+				},
+				/*运力调度管理*/
+				{/*运力调度查询*/
+					path: '/dldd/dlddcx',
+					name: 'PowerSchedulingQuery',
+					component: () => import('./views/capacityDispatchManage/PowerSchedulingQuery.vue')
+				},
+				{/*动力调度统计*/
+					path: '/dldd/dlddtj',
+					name: 'PowerSchedulingStatistics',
+					component: () => import('./views/capacityDispatchManage/PowerSchedulingStatistics.vue')
+				},
+				/*服务平台使用情况*/
+				{/*企业分中心查询*/
+					path: '/fwpt/qyfzxcx',
+					name: 'EnterpriseSubCenterQuery',
+					component: () => import('./views/servicePlatformUsage/EnterpriseSubCenterQuery.vue')
+				},
+				{/*企业分中心统计*/
+					path: '/fwpt/qyfzxtj',
+					name: 'EnterpriseSubCenterStatistics',
+					component: () => import('./views/servicePlatformUsage/EnterpriseSubCenterStatistics.vue')
+				},
+				{/*维修管理查询*/
+					path: '/fwpt/wxglcx',
+					name: 'MaintenanceManageInquiry',
+					component: () => import('./views/servicePlatformUsage/MaintenanceManageInquiry.vue')
+				},
+				{/*维修管理统计*/
+					path: '/fwpt/wxgltj',
+					name: 'MaintenanceManageStatistics',
+					component: () => import('./views/servicePlatformUsage/MaintenanceManageStatistics.vue')
+				},
+				{/*终端未安装查询*/
+					path: '/fwpt/wazcx',
+					name: 'TerminalQueryNotInstalled',
+					component: () => import('./views/servicePlatformUsage/TerminalQueryNotInstalled.vue')
+				},
+				{/*安装情况统计*/
+					path: '/fwpt/aztj',
+					name: 'InstallationStatistics',
+					component: () => import('./views/servicePlatformUsage/InstallationStatistics.vue')
+				},
+				{/*月度安装分析*/
+					path: '/fwpt/ydaz',
+					name: 'MonthlyInstallationAnalysis',
+					component: () => import('./views/servicePlatformUsage/MonthlyInstallationAnalysis.vue')
+				},
+				/*行业运行情况*/
+				{/*单车营运情况*/
+					path: '/hyyx/dcyyqk',
+					name: 'BicycleOperation',
+					component: () => import('./views/industryOperation/BicycleOperation.vue')
+				},
+				{/*行业营运情况*/
+					path: '/hyyx/hyyyqk',
+					name: 'IndustryOperation',
+					component: () => import('./views/industryOperation/IndustryOperation.vue')
+				},
+				{/*行业平均运行情况*/
+					path: '/hyyx/hypjyxqk',
+					name: 'AverageIndustryPerformance',
+					component: () => import('./views/industryOperation/AverageIndustryPerformance.vue')
+				},
+				{/*总体营运趋势*/
+					path: '/hyyx/ztyyqs',
+					name: 'OverallOperationTrend',
+					component: () => import('./views/industryOperation/OverallOperationTrend.vue')
+				},
+				{/*企业车辆营运情况*/
+					path: '/hyyx/qyclyyqk',
+					name: 'EnterpriseVehicleOperation',
+					component: () => import('./views/industryOperation/EnterpriseVehicleOperation.vue')
+				},
+				{/*驾驶员收入情况*/
+					path: '/hyyx/jsysrqk',
+					name: 'DriverIncome',
+					component: () => import('./views/industryOperation/DriverIncome.vue')
+				},
+				{/*车辆运行排行*/
+					path: '/hyyx/clyxph',
+					name: 'VehicleRunningRanking',
+					component: () => import('./views/industryOperation/VehicleRunningRanking.vue')
+				},
+				{/*运力需求热点*/
+					path: '/hyyx/ylxqrd',
+					name: 'CapacityDemandHotsPot',
+					component: () => import('./views/industryOperation/CapacityDemandHotsPot.vue')
+				},
+				{/*OD营运数据分析*/
+					path: '/hyyx/dcrdod/odyysj',
+					name: 'ODOperationDataAnalysis',
+					component: () => import('./views/industryOperation/ODOperationDataAnalysis.vue')
+				},
+				{/*OD流向统计*/
+					path: '/hyyx/dcrdod/odlxtj',
+					name: 'ODFlowStatistics',
+					component: () => import('./views/industryOperation/ODFlowStatistics.vue')
+				},
+				{/*OD流向图*/
+					path: '/hyyx/dcrdod/odlxt',
+					name: 'ODFlowDiagram',
+					component: () => import('./views/industryOperation/ODFlowDiagram.vue')
+				},
+				{/*夜间停放位置分析*/
+					path: '/hyyx/yjtfwz',
+					name: 'ParkingPlaceAtNight',
+					component: () => import('./views/industryOperation/ParkingPlaceAtNight.vue')
+				},
+				{/*驾驶员违法统计*/
+					path: '/hyyx/jsywftj',
+					name: 'DriverViolationStatistics',
+					component: () => import('./views/industryOperation/DriverViolationStatistics.vue')
+				},
+				{/*投诉查询*/
+					path: '/hyyx/tscx',
+					name: 'ComplaintInquiry',
+					component: () => import('./views/industryOperation/ComplaintInquiry.vue')
+				},
+				{/*抓拍数据查询*/
+					path: '/hyyx/zpsj/zpsjcx',
+					name: 'CaptureDataQuery',
+					component: () => import('./views/industryOperation/CaptureDataQuery.vue')
+				},
+				{/*场站流量统计*/
+					path: '/hyyx/zpsj/calltj',
+					name: 'StationTrafficStatistics',
+					component: () => import('./views/industryOperation/StationTrafficStatistics.vue')
+				},
+				{/*日流量统计*/
+					path: '/hyyx/zpsj/rlltj',
+					name: 'DailyTrafficStatistics',
+					component: () => import('./views/industryOperation/DailyTrafficStatistics.vue')
+				},
+				{/*分段流量统计*/
+					path: '/hyyx/zpsj/fdlltj',
+					name: 'SegmentedTrafficStatistics',
+					component: () => import('./views/industryOperation/SegmentedTrafficStatistics.vue')
+				},
+				/*运政数据接入*/
+				{/*车辆信息*/
+					path: '/sjdj/clxx',
+					name: 'VehicleInfo',
+					component: () => import('./views/transportDataAccess/VehicleInfo.vue')
+				},
+				{/*驾驶员信息*/
+					path: '/sjdj/jsyxx',
+					name: 'DriverInfo',
+					component: () => import('./views/transportDataAccess/DriverInfo.vue')
+				},
+				{/*公司信息*/
+					path: '/sjdj/gsxx',
+					name: 'CompanyInfo',
+					component: () => import('./views/transportDataAccess/CompanyInfo.vue')
+				},
+				{/*交班信息*/
+					path: '/sjdj/jbxx',
+					name: 'handoverInfo',
+					component: () => import('./views/transportDataAccess/handoverInfo.vue')
+				},
+				{/*服务质量平台*/
+					path: '/sjdj/fwzlpt',
+					name: 'ServiceQualityPlatform',
+					component: () => import('./views/transportDataAccess/ServiceQualityPlatform.vue')
+				},
+				/*支付服务*/
+				{/*支付明细查询*/
+					path: '/zffw/zfmxcx',
+					name: 'PaymentDetailsInquiry',
+					component: () => import('./views/paymentService/PaymentDetailsInquiry.vue')
+				},
+				{/*支付账单统计*/
+					path: '/zffw/zfzdtf',
+					name: 'PayBillsStatistics',
+					component: () => import('./views/paymentService/PayBillsStatistics.vue')
+				}
+			]
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      // route level code-splitting
+      // this generates a separate chunk (about.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
+    }
+  ]
+})

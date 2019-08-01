@@ -1,0 +1,134 @@
+<!--在线车辆统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="date" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="date" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterOnlineVehicleList" v-loading="table.loading" border size="small" height="calc(100% - 42px)"
+								style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+				<el-table-column prop="fgsmc" label="分公司名称" min-width="180"></el-table-column>
+				<el-table-column prop="clzs" label="车辆总数" width="180"></el-table-column>
+				<el-table-column prop="sxzs" label="上线总数" width="180"></el-table-column>
+				<el-table-column prop="sxl" label="上线率" width="180"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "OnlineVehicleStatistics",
+		data() {
+			return {
+				query: {
+					companyName: '',
+					stime: '',
+					etime: ''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = moment().subtract(1,'day');
+				this.query.etime = moment().subtract(1,'day');
+				this.getOnline();
+			});
+		},
+		computed: {
+			...mapGetters(['getCompanyName']),
+			filterOnlineVehicleList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage - 1;
+				return _.filter(data, (item, index) => {
+					return index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			queryCompanyNameSearch(query, cb) {
+				cb(_.filter(this.getCompanyName, item => item.label.indexOf(query) > -1));
+			},
+			getOnline(){
+				const {companyName, stime, etime} = this.query;
+				if(!stime||!etime) return this.$message.error('请选择时间！');
+				if((stime&&moment(stime).format('YYYY-MM'))!==(etime&&moment(etime).format('YYYY-MM'))) return this.$message.error('无法跨月查询！');
+				this.table.loading = true;
+				axios.get('terminal/online', {
+					baseURL: this.baseURL,
+					params: {
+						companyName,
+						stime: stime&&moment(stime).format('YYYY-MM-DD'),
+						etime: etime&&moment(etime).format('YYYY-MM-DD')
+					}
+				}).then(res => {
+					console.info(res.data);
+					this.table.data = _.map(res.data, item => {
+						return {gsmc: item.COMP_NAME, fgsmc: item.BA_NAME, clzs: item.ZS, sxzs: item.ZXZS, sxl: item.ZXL}
+					});
+					this.table.total = this.table.data.length;
+					this.table.currentPage = 1;
+					this.table.loading = false;
+				})
+					.catch(function (error) {
+						console.log(error);
+					});
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getOnline();
+			},
+			handleExportClick() {
+				const {companyName, stime, etime} = this.query;
+				if(!stime||!etime) return this.$message.error('请选择时间！');
+				if((stime&&moment(stime).format('YYYY-MM'))!==(etime&&moment(etime).format('YYYY-MM'))) return this.$message.error('无法跨月查询！');
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}terminal/onlinedc?companyName=${companyName}&stime=${stime && moment(stime).format('YYYY-MM-DD')}&etime=${etime && moment(etime).format('YYYY-MM-DD')}`);
+				}).catch(() => {});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

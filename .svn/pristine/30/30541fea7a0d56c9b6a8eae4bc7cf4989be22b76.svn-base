@@ -1,0 +1,149 @@
+<!--分段流量统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<tree-select class="tw-tree-select tw-line" v-model="query.depot" :multiple="true" :options="depotNameOption" placeholder="场站"/>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.time" type="date" placeholder="日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-checkbox v-model="query.type">一分钟无重复</el-checkbox>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="chzh" label="场站" min-width="200"></el-table-column>
+				<el-table-column prop="sjd0" label="00:00-02:00" width="100"></el-table-column>
+				<el-table-column prop="sjd1" label="02:00-04:00" width="100"></el-table-column>
+				<el-table-column prop="sjd2" label="04:00-06:00" width="100"></el-table-column>
+				<el-table-column prop="sjd3" label="06:00-08:00" width="100"></el-table-column>
+				<el-table-column prop="sjd4" label="08:00-10:00" width="100"></el-table-column>
+				<el-table-column prop="sjd5" label="10:00-12:00" width="100"></el-table-column>
+				<el-table-column prop="sjd6" label="12:00-14:00" width="100"></el-table-column>
+				<el-table-column prop="sjd7" label="14:00-16:00" width="100"></el-table-column>
+				<el-table-column prop="sjd8" label="16:00-18:00" width="100"></el-table-column>
+				<el-table-column prop="sjd9" label="18:00-20:00" width="100"></el-table-column>
+				<el-table-column prop="sjd10" label="20:00-22:00" width="100"></el-table-column>
+				<el-table-column prop="sjd11" label="22:00-24:00" width="100"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TreeSelect from '@riophae/vue-treeselect'
+	import {mapGetters} from 'vuex'
+	import {formatCustomizeDate, formatDateTime, formatDate} from '../../assets/js/util'
+
+	export default {
+		name: "SegmentedTrafficStatistics",
+		data() {
+			let config = {
+				rotate: 90,
+				align: 'left',
+				verticalAlign: 'middle',
+				position: 'insideBottom',
+				distance: 15
+			};
+			let labelOption = {
+				normal: {
+					show: true,
+					position: config.position,
+					distance: config.distance,
+					align: config.align,
+					verticalAlign: config.verticalAlign,
+					rotate: config.rotate,
+					formatter: '{c}  {name|{a}}',
+					fontSize: 16,
+					rich: {
+						name: {
+							textBorderColor: '#fff'
+						}
+					}
+				}
+			};
+			return {
+				query: {
+					depot: [],
+					time: '',
+					type: false
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							chzh: '三墩',
+							sjd0: 0,
+							sjd1: 0,
+							sjd2: 0,
+							sjd3: 2,
+							sjd4: 38,
+							sjd5: 95,
+							sjd6: 60,
+							sjd7: 19,
+							sjd8: 6,
+							sjd9: 0,
+							sjd10: 0,
+							sjd11: 0
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.time = formatDate(moment());
+				window.onresize = () => {
+					this.$refs.vehicleChart.resize();
+				}
+			});
+		},
+		computed: {
+			...mapGetters(['getDepotName']),
+			depotNameOption() {
+				return this.getDepotName;
+			},
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			/*事件*/
+			handleQueryClick() {
+				this.getHostFailure();
+			},
+			handleExportClick() {},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tree-select': TreeSelect
+		}
+	}
+</script>
+
+<style scoped>
+	.tw-query-panel {
+		height: calc(100% - 53px);
+	}
+</style>

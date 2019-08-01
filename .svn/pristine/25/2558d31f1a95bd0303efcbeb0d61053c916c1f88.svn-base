@@ -1,0 +1,197 @@
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-template-header">
+			<tw-header>
+				<template slot="title"><div class="tw-logo-title">杭州出租汽车监管服务平台</div></template>
+				<template slot="tool" class="system-toolbar">
+					<div class="system-toolItem"><tw-icon icon="icon-user" font-size="24px"></tw-icon></div>
+					<div class="system-toolItem"><tw-icon icon="icon-close" font-size="24px"></tw-icon></div>
+				</template>
+			</tw-header>
+		</div>
+		<div class="tw-template-left" :class="{hover: hasHoverLeftBar || hasSecondaryMenu}">
+			<tw-system-menu :data="{systemMenu: systemMenuList, secondaryMenu: menuLists}" @system-item-click="handleSystemItemClick" @display-state="handleSecondaryDisplayState" @mouseenter="handleLeftBarMouseenter" @mouseleave="handleLeftBarMouseleave"></tw-system-menu>
+		</div>
+		<div class="tw-template-body">
+			<router-view/>
+		</div>
+	</div>
+</template>
+
+<script>
+	import TWHeader from '../components/TWHeader'
+	import TWIcon from '../components/TWIcon'
+	import TWSystemMenu from '../components/TWMenu/TWSystemMenu'
+
+	export default {
+		name: "Index",
+		data() {
+			return {
+				hasHoverLeftBar: false,
+				hasSecondaryMenu: false,
+				systemMenuList: [
+					{id:'zdfx', title:'终端分析系统', icon: 'icon-kefu', href: ''},
+					{id:'oaxt', title:'企业函件管理', icon: 'icon-peoplelist', href: ''},
+					{id:'dxfs', title:'工单管理系统', icon: 'icon-mail', href: ''},
+					{id:'zscxk', title:'维修管理系统', icon: 'icon-label', href: ''},
+					{id:'yzsjcx', title:'运力调度管理', icon: 'icon-find', href: ''},
+					{id:'bjjkx', title:'服务平台使用情况分析', icon: 'icon-monitor', href: ''},
+					{id:'czhtxt', title:'行业运行情况分析', icon: 'icon-taxi', href: ''},
+					{id:'czbb', title:'运政数据接入', icon: 'icon-report', href: ''},
+					{id:'zhyw', title:'支付服务', icon: 'icon-form', href: ''},
+					{id:'swxc', title:'导航屏升级', icon: 'icon-consultation', href: ''},
+				],
+				menuLists: {
+					zdfx: [
+						{id:'zjgz', title:'主机故障', icon: 'icon-kefu', href: '/zdfx/zjgz'},
+						{id:'zixun', title:'终端异常告警', icon: 'icon-kefu', href: '/zdfx/zixun'},
+						{id:'jifen', title:'完好率统计分析', icon: 'icon-kefu', href: '/zdfx/jifen'},
+						{id:'jifen', title:'车辆管理', icon: 'icon-kefu', href: '/zdfx/jifen'},
+						{id:'jifen', title:'视频异常', icon: 'icon-kefu', href: '/zdfx/jifen'}
+					],
+					oaxt: [
+						{id:'rxrz', title:'热线日志', icon: 'icon-kefu', href: '/oaxt/rxrz'},
+						{id:'ceshi', title:'测试', icon: 'icon-kefu', fullPath: '/oaxt/ceshi', children: [
+								{id:'ceshi1', title:'测试1', icon: 'icon-kefu', href: '/oaxt/ceshi/ceshi1'},
+								{id:'ceshi2', title:'测试2', icon: 'icon-kefu', href: '/oaxt/ceshi/ceshi2'},
+								{id:'ceshi3', title:'测试3', icon: 'icon-kefu', fullPath: '/oaxt/ceshi/ceshi3', children: [
+										{id:'ceshi3-1', title:'测试3-1', icon: 'icon-kefu', href: '/oaxt/ceshi/ceshi3-1'},
+										{id:'ceshi3-2', title:'测试3-2', icon: 'icon-kefu', href: '/oaxt/ceshi/ceshi3-2'}
+									]
+								}
+							]
+						},
+						{id:'gycs', title:'工业测试', icon: 'icon-kefu', fullPath: '/oaxt/gycs', children: [
+								{id:'gycs1', title:'工业测试1', icon: 'icon-kefu', href: '/oaxt/gycs/gycs1'},
+								{id:'gycs2', title:'工业测试2', icon: 'icon-kefu', href: '/oaxt/gycs/gycs2'}
+							]
+						},
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'lkxx', title:'路况信息', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'},
+						{id:'tsjl', title:'投诉记录', icon: 'icon-kefu', href: '/'},
+						{id:'xtgz', title:'系统故障', icon: 'icon-kefu', href: '/'},
+						{id:'bjtj', title:'报警统计', icon: 'icon-kefu', href: '/'},
+						{id:'bjgz', title:'报警故障', icon: 'icon-kefu', href: '/'},
+						{id:'bzl', title:'帮助类', icon: 'icon-kefu', href: '/'},
+						{id:'whl', title:'维护类', icon: 'icon-kefu', href: '/'}
+					],
+					dxfs: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					zscxk: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'lkxx', title:'路况信息', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					yzsjcx: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					bjjkx: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'lkxx', title:'路况信息', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					czhtxt: [
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'lkxx', title:'路况信息', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					czbb: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'},
+						{id:'fyjl', title:'翻译记录', icon: 'icon-kefu', href: '/'}
+					],
+					zhyw: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'txzy', title:'提醒注意', icon: 'icon-kefu', href: '/'},
+						{id:'hrhs', title:'好人好事', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'}
+					],
+					swxc: [
+						{id:'tsyw', title:'特殊业务', icon: 'icon-kefu', href: '/'},
+						{id:'dxyw', title:'短信业务', icon: 'icon-kefu', href: '/'},
+						{id:'lkxx', title:'路况信息', icon: 'icon-kefu', href: '/'},
+						{id:'swdj', title:'失物登记', icon: 'icon-kefu', href: '/'}
+					]
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+			});
+		},
+		methods: {
+			handleLeftBarMouseenter() {
+				this.hasHoverLeftBar = true;
+			},
+			handleLeftBarMouseleave() {
+				this.hasHoverLeftBar = false;
+			},
+			handleSecondaryDisplayState(state) {
+				console.info('handleSecondaryDisplayState:', state)
+				this.hasSecondaryMenu = state;
+			},
+			handleSystemItemClick(item) {
+				console.info('handleSystemItemClick-----1:', item)
+			}
+		},
+		components: {
+			'tw-header': TWHeader,
+			'tw-icon': TWIcon,
+			'tw-system-menu': TWSystemMenu
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-template {
+		$leftWidth: 50px;
+		$leftWidth__hover: 300px;
+
+		&-left {
+			width: $leftWidth;
+			background-color: #113f67;
+
+			& + .tw-template-body {
+				width: calc(100% - #{$leftWidth});
+				margin-left: $leftWidth;
+			}
+			&.hover, &.active {
+				width: $leftWidth__hover;
+
+				& + .tw-template-body {
+					width: calc(100% - #{$leftWidth__hover});
+					margin-left: $leftWidth__hover;
+				}
+			}
+		}
+	}
+	.tw-header {
+		padding-left: 20px;
+	}
+</style>

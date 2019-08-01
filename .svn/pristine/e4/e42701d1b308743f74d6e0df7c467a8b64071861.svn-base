@@ -1,0 +1,220 @@
+<!--视频异常-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.lPNumber"
+												 :fetch-suggestions="getLPNumberRemoteMethod" :trigger-on-focus="false"
+												 @select="handleLPNumberSelect" placeholder="车牌号码"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.time" placeholder="选择时间点"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<tree-select class="tw-tree-select tw-line" v-model="query.faultType" :multiple="true" :options="faultTypeOptions" placeholder="故障类型"/>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleAlarmIssuedClick">告警下发</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="100%" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" width="180"></el-table-column>
+				<el-table-column prop="qiye" label="企业" width="180"></el-table-column>
+				<el-table-column prop="spdx" label="视频短线" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.spdx" :system-fault="scope.row.spdxxt" type="视频短线" @true-review-click="" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="sphp" label="视频" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.sphp" :system-fault="scope.row.sphpxt" type="视频黑屏" @true-review-click="" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="spwy" label="视频移位" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.spwy" :system-fault="scope.row.spwyxt" type="视频移位" @true-review-click="" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="spxz" label="视频下载" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.spxz" :system-fault="scope.row.spxzxt" type="视频下载" @true-review-click="" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column min-width="0"></el-table-column>
+			</el-table>
+		</div>
+	</div>
+</template>
+
+<script>
+	import TreeSelect from '@riophae/vue-treeselect'
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import FaultReview from '../../components/TableColumn/FaultReview'
+
+	export default {
+		name: "VideoAnomaly",
+		data() {
+			return {
+				query: {
+					lPNumber: '',
+					time: '',
+					faultType: []
+				},
+				lpNumberLoading: false,
+				lpNumberOption: [],
+				faultTypeOptions: [
+					{
+						id: 'a', label: 'a', children: [
+							{id: 'aa', label: 'aa'},
+							{id: 'ab', label: 'ab'},
+							{id: 'ac', label: 'ac'},
+							{id: 'ad', label: 'ad'},
+							{id: 'ae', label: 'ae'}
+						]
+					},
+					{id: 'b', label: 'b'},
+					{id: 'c', label: 'c'}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							cphm: '',
+							qiye: '',
+							spdxxt: 1,
+							spdx: 0,
+							sphpxt: 0,
+							sphp: 0,
+							spwyxt: 0,
+							spwy: 0,
+							spxzxt: 1,
+							spxz: 2
+						},
+						{
+							cphm: '',
+							qiye: '',
+							spdxxt: 1,
+							spdx: 1,
+							sphpxt: 1,
+							sphp: 1,
+							spwyxt: 0,
+							spwy: 0,
+							spxzxt: 1,
+							spxz: 2
+						},
+						{
+							cphm: '',
+							qiye: '',
+							spdxxt: 1,
+							spdx: 2,
+							sphpxt: 0,
+							sphp: 0,
+							spwyxt: 0,
+							spwy: 0,
+							spxzxt: 1,
+							spxz: 2
+						}
+					]
+				}
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getLPNumberRemoteMethod(query, cd) {
+				if (query.length < 3) cd(null);
+				else {
+					setTimeout(() => {
+						cd(_.map(_.filter(['浙A12340', '浙A12341', '浙A12342',
+							'浙A28341', '浙A28344', '浙A28347',
+							'浙A65141', '浙A65144', '浙A65147',
+							'浙A25411', '浙A25414', '浙A25417', '浙A25410',
+							'浙A15841', '浙A15844', '浙A15847', '浙A15840',
+							'浙A95241', '浙A95244', '浙A95247',
+							'浙A15841', '浙A15844', '浙A15847',
+							'浙A32541', '浙A32544', '浙A32547',
+							'浙A68451', '浙A68454', '浙A68457',
+							'浙A35661', '浙A35664', '浙A35667',
+							'浙A13141', '浙A13144', '浙A13147',
+							'浙A58221', '浙A58224', '浙A58227',
+							'浙A16661', '浙A16664',
+							'浙A43991', '浙A43994', '浙A43997',
+							'浙A28241', '浙A28244', '浙A28247',
+							'浙A73841', '浙A73844', '浙A73847',
+							'浙A15441'], item => item.indexOf(query) > -1), item => {
+							return {label: item, value: item}
+						}))
+					}, 200);
+				}
+			},
+			/*事件*/
+			handleLPNumberSelect(item) {
+				console.info(item)
+			},
+			handleQueryClick() {
+			},
+			handleAlarmIssuedClick() {
+			},
+			handleExportClick() {
+			},
+			handleVerifyClick() {
+			},
+			handleAuditTypeClick(item) {
+				this.$confirm('是否属实?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					// 属实操作
+				}).catch(() => {
+					// 不实操作
+				});
+			},
+			/*格式*/
+			formatAuditType(type) {
+				switch (type) {
+					case 0:
+						return '未审核';
+					case 1:
+						return '故障';
+					case 2:
+						return '无故障';
+				}
+			},
+			formatSystemAuditClassType(type) {
+				switch (type) {
+					case 0:
+						return 'tw-text-success';
+					case 1:
+						return 'tw-text-error';
+				}
+			},
+			formatAuditClassType(type) {
+				switch (type) {
+					case 0:
+						return 'tw-text-info';
+					case 1:
+						return 'tw-text-error';
+					case 2:
+						return 'tw-text-success';
+				}
+			}
+		},
+		components: {
+			'tree-select': TreeSelect,
+			FaultReview
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

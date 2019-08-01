@@ -1,0 +1,85 @@
+<!--安装情况统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-query-panel">
+			<el-table :data="table1.data" v-loading="table1.loading" border size="small" height="81px" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column prop="COUNT1" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="COUNT2" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="COUNT3" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="RATE" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+			<hr class="tw-horizontal-rule">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 133px)" style="width: 100%">
+				<el-table-column prop="COMP_NAME" label="企业名称" width="300"></el-table-column>
+				<el-table-column prop="COUNT2" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="COUNT1" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="COUNT3" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="RATE" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+
+	export default {
+		name: "InstallationStatistics",
+		data() {
+			return {
+				table1: {
+					loading: false,
+					data: []
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getInstallationStatistics();
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			getInstallationStatistics(){
+				axios.get('/servicePlatformUsage/getInstallationStatistics', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					this.table1.data = res.data.list || [];
+					this.table.data = res.data.list1 || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+				})
+			},
+			/*事件*/
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+	.tw-query-panel {
+		height: 100%;
+	}
+</style>

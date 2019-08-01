@@ -1,0 +1,318 @@
+<!--车辆信息-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.region" placeholder="区域">
+					<el-option v-for="item in getRegion" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="PLATE_NUMBER" label="车牌号码" width="120"></el-table-column>
+				<el-table-column prop="VEHICLE_TYPE_NAME" label="车辆类型" width="100"></el-table-column>
+				<el-table-column prop="BRAND" label="车辆品牌" width="100"></el-table-column>
+				<el-table-column prop="COMPANY_NAME" label="公司名称" min-width="280"></el-table-column>
+				<el-table-column prop="COMPANY_LICENSE_NUMBER" label="经营许可证" width="120"></el-table-column>
+				<el-table-column prop="LICENSE_NUMBER" label="道路运输证" width="120"></el-table-column>
+				<el-table-column prop="hfrq" label="核发日期" width="120"></el-table-column>
+				<el-table-column prop="yxrq" label="有效日期" width="120"></el-table-column>
+				<el-table-column prop="BUSINESS_SCOPE_NAME" label="经营范围" width="180"></el-table-column>
+				<el-table-column prop="STATUS_NAME" label="状态" width="100"></el-table-column>
+				<el-table-column label="操作" width="100">
+					<template slot-scope="scope">
+						<el-button class="tw-table-button" type="text" size="mini" icon="iconfont icon-search" @click="handleDetailsClick(scope.row)"></el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+		<el-dialog class="tw-dialog" :title="dialog.title" :visible.sync="dialog.display" width="960">
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">公司基本信息</div>
+				<el-form :inline="true" :model="dialog.companyInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="公司名称：" label-width="6em" style="width: 310px;">{{dialog.companyInfo.gsmc}}</el-form-item>
+					<el-form-item class="tw-query-item" label="经营许可证：" style="width: 250px;">{{dialog.companyInfo.yyxkz}}</el-form-item>
+					<el-form-item class="tw-query-item" label="公司营运范围：">{{dialog.companyInfo.gsyyfw}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">车辆基本信息</div>
+				<el-form :inline="true" :model="dialog.vehicleInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="车牌号码：">{{dialog.vehicleInfo.cphm}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车牌颜色：">{{dialog.vehicleInfo.cpys}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车牌类型：">{{dialog.vehicleInfo.cplx}}</el-form-item>
+					<el-form-item class="tw-query-item" label="核定载客：">{{dialog.vehicleInfo.hdzk}}</el-form-item>
+					<el-form-item class="tw-query-item" label="厂牌：">{{dialog.vehicleInfo.cpai}}</el-form-item>
+					<el-form-item class="tw-query-item" label="型号：">{{dialog.vehicleInfo.xhao}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车长：">{{dialog.vehicleInfo.chec}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车宽：">{{dialog.vehicleInfo.chek}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车高：">{{dialog.vehicleInfo.cheg}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车辆颜色：">{{dialog.vehicleInfo.clys}}</el-form-item>
+					<el-form-item class="tw-query-item" label="车辆档案号：">{{dialog.vehicleInfo.clda}}</el-form-item>
+					<el-form-item class="tw-query-item" label="总质量：">{{dialog.vehicleInfo.zzli}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__3" label="车辆备注：">{{dialog.vehicleInfo.clbz}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">技术信息</div>
+				<el-form :inline="true" :model="dialog.technicalInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="发动机号：">{{dialog.technicalInfo.fdjh}}</el-form-item>
+					<el-form-item class="tw-query-item" label="技术等级：">{{dialog.technicalInfo.jsdj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效期止：">{{dialog.technicalInfo.yxqz}}</el-form-item>
+					<el-form-item class="tw-query-item" label="识别代码：">{{dialog.technicalInfo.sbdm}}</el-form-item>
+					<el-form-item class="tw-query-item" label="燃料类型：">{{dialog.technicalInfo.rllx}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">道路运输证信息</div>
+				<el-form :inline="true" :model="dialog.rodTPermitInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="道路运输证号：">{{dialog.rodTPermitInfo.yszh}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效开始时间：">{{dialog.rodTPermitInfo.kssj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效截止时间：">{{dialog.rodTPermitInfo.jzsj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="年审有效期起：">{{dialog.rodTPermitInfo.nsyxq}}</el-form-item>
+					<el-form-item class="tw-query-item" label="初次发证时间：">{{dialog.rodTPermitInfo.ccfzsj}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__3" label="运输证备注：">{{dialog.rodTPermitInfo.yszbz}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">驾驶员信息</div>
+				<el-form :inline="true" :model="dialog.driverInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="姓名：">{{dialog.driverInfo.name}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效开始时间：">{{dialog.driverInfo.kssj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效截止时间：">{{dialog.driverInfo.jzsj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="年审有效期起：">{{dialog.driverInfo.nsyxq}}</el-form-item>
+					<el-form-item class="tw-query-item" label="初次发证时间：">{{dialog.driverInfo.ccfzsj}}</el-form-item>
+					<el-form-item class="tw-query-item" label="运输证备注：">{{dialog.driverInfo.yszbz}}</el-form-item>
+				</el-form>
+			</el-card>
+			<div slot="footer" class="dialog-footer">
+				<el-button @click="dialog.display = false">取 消</el-button>
+				<el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+			</div>
+		</el-dialog>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "VehicleInfo",
+		data() {
+			return {
+				query: {
+					vehicle: '',
+					companyName: '',
+					region: ''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+				dialog: {
+					title: '详情',
+					display: false,
+					companyInfo: {
+						gsmc: '',
+						yyxkz: '',
+						gsyyfw: ''
+					},
+					vehicleInfo: {
+						cphm: '',
+						cpys: '',
+						cplx: '',
+						hdzk: '',
+						cpai: '',
+						xhao: '',
+						chec: '',
+						chek: '',
+						cheg: '',
+						clys: '',
+						clda: '',
+						zzli: '',
+						clbz: ''
+					},
+					technicalInfo: {
+						fdjh: '',
+						jsdj: '',
+						yxqz: '',
+						sbdm: '',
+						rllx: ''
+					},
+					rodTPermitInfo: {
+						yszh: '',
+						kssj: '',
+						jzsj: '',
+						nsyxq: '',
+						ccfzsj: '',
+						yszbz: ''
+					},
+					driverInfo: {
+						name: '',
+						kssj: '',
+						jzsj: '',
+						nsyxq: '',
+						ccfzsj: '',
+						yszbz: ''
+					}
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getVehicleInformation();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber', 'getCompanyName', 'getRegion']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getVehicleInformation(){
+				this.table.loading = true;
+				const {vehicle, companyName,region} = this.query;
+				axios.get('transportationDataAccess/getVehicleInformation', {
+					baseURL: this.baseURL,
+					params: {
+						vehiNo:vehicle,
+						companyName:companyName,
+						region:region
+					}
+				}).then(res => {
+					console.info(res.data)
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			queryVehicleSearch(query, cb) {
+				if (query.length < 3) cb(null);
+				else
+					cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.filter(this.getCompanyName, item => item.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getVehicleInformation();
+			},
+			handleExportClick() {
+				const {vehicle, companyName,region} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}industryOperation/getCyclingOperationExcel?vehicle=${vehicle}&companyName=${companyName}&region=${region}`);
+				}).catch(() => {
+				});
+			},
+			handleDetailsClick(item) {
+				console.info('handleDetailsClick:', item)
+				this.dialog.display = true;
+				this.dialog.companyInfo = {
+					gsmc: item.gsmc,
+					yyxkz: item.jyxkz,
+					gsyyfw: item.jyfw
+				};
+				this.dialog.vehicleInfo = {
+					cphm: item.cphm,
+						cpys: item.cpys,
+						cplx: item.cllx,
+						hdzk: item.hdzk,
+						cpai: item.clpp,
+						xhao: item.xhao,
+						chec: item.chec,
+						chek: item.chek,
+						cheg: item.cheg,
+						clys: item.clys,
+						clda: item.clda,
+						zzli: item.zzli,
+						clbz: item.clbz
+				};
+				this.dialog.technicalInfo = {
+					fdjh: item.fdjh,
+					jsdj: item.jsdj,
+					yxqz: item.yxqz,
+					sbdm: item.sbdm,
+					rllx: item.rllx
+				};
+				this.dialog.rodTPermitInfo = {
+					yszh: item.dlysz,
+					kssj: item.yxqz,
+					jzsj: item.jzsj,
+					nsyxq: item.nsyxq,
+					ccfzsj: item.ccfzsj,
+					yszbz: item.yszbz
+				};
+				this.dialog.driverInfo = {
+					name: item.name,
+					kssj: item.kssj,
+					jzsj: item.jzsj,
+					nsyxq: item.nsyxq,
+					ccfzsj: item.ccfzsj,
+					yszbz: item.yszbz
+				};
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-query {
+		&-bar {
+			border-bottom: none;
+		}
+		&-item {
+			width: 33.333333%;
+			margin-right: 0;
+			padding-right: 10px;
+			box-sizing: border-box;
+		}
+		&-item__2 {
+			width: 66.666666%;
+		}
+		&-item__3 {
+			width: 100%;
+		}
+	}
+</style>

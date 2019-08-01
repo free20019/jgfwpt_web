@@ -1,0 +1,176 @@
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-template-header">
+			<tw-header>
+				<template slot="title"><div class="tw-logo-title">杭州出租汽车监管服务平台</div></template>
+				<template slot="tool" class="system-toolbar">
+					<div class="system-toolItem"><tw-icon icon="icon-user" font-size="24px"></tw-icon></div>
+					<div class="system-toolItem"><tw-icon icon="icon-close" font-size="24px"></tw-icon></div>
+				</template>
+			</tw-header>
+		</div>
+		<div class="tw-template-left" :class="{hover: hasHoverLeftBar || hasSecondaryMenu}" style="z-index: 2500;">
+			<tw-system-menu :data="{systemMenu: systemMenuList, secondaryMenu: menuLists}" @system-item-click="handleSystemItemClick" @display-state="handleSecondaryDisplayState" @mouseenter="handleLeftBarMouseenter" @mouseleave="handleLeftBarMouseleave"></tw-system-menu>
+		</div>
+		<div class="tw-template-body">
+			<router-view/>
+		</div>
+	</div>
+</template>
+
+<script>
+	import TWHeader from '../components/TWHeader'
+	import TWIcon from '../components/TWIcon'
+	import TWSystemMenu from '../components/TWMenu/TWSystemMenu'
+
+	export default {
+		name: "Index",
+		data() {
+			return {
+				hasHoverLeftBar: false,
+				hasSecondaryMenu: false,
+				systemMenuList: [
+					{id:'zdfx', title:'终端分析系统', icon: 'icon-kefu', href: ''},
+					{id:'qyhj', title:'企业函件管理', icon: 'icon-peoplelist', href: ''},
+					{id:'gdxt', title:'工单管理系统', icon: 'icon-mail', href: ''},
+					{id:'wxgl', title:'维修管理系统', icon: 'icon-label', href: ''},
+					{id:'dldd', title:'运力调度管理', icon: 'icon-find', href: ''},
+					{id:'fwpt', title:'服务平台管理', icon: 'icon-monitor', href: ''},
+					{id:'hyyx', title:'行业运行情况', icon: 'icon-taxi', href: ''},
+					{id:'sjdj', title:'运政数据接入', icon: 'icon-report', href: ''},
+					{id:'zffw', title:'支付服务', icon: 'icon-form', href: ''},
+					// {id:'swxc', title:'导航屏升级', icon: 'icon-consultation', href: ''}
+				],
+				menuLists: {
+					zdfx: [
+						{id:'zjgz', title:'主机故障', icon: 'icon-kefu', href: '/zdfx/zjgz'},
+						{id:'zdyc', title:'终端异常告警', icon: 'icon-kefu', href: '/zdfx/zdyc'},
+						{id:'whltj', title:'完好率统计', icon: 'icon-kefu', href: '/zdfx/whltj'},
+						{id:'clgl', title:'车辆管理', icon: 'icon-kefu', fullPath: '/zdfx/clgl', children: [
+								{id:'zxcltj', title:'在线车辆统计', icon: 'icon-kefu', href: '/zdfx/clgl/zxcltj'},
+								{id:'wsxclcx', title:'未上线车辆查询', icon: 'icon-kefu', href: '/zdfx/clgl/wsxclcx'}
+							]
+						},
+						{id:'jifen', title:'视频异常', icon: 'icon-kefu', href: '/zdfx/spyc'},
+						{id:'wxgdcx', title:'维修工单', icon: 'icon-kefu', href: '/zdfx/wxgdcx'}
+					],
+					qyhj: [
+						{id:'hjtj', title:'函件添加', icon: 'icon-kefu', href: '/qyhj/hjtj'},
+						{id:'hjfs', title:'函件发送', icon: 'icon-kefu', href: '/qyhj/hjfs'},
+						{id:'hjcx', title:'函件查询', icon: 'icon-kefu', href: '/qyhj/hjcx'},
+						{id:'hjsh', title:'函件审核', icon: 'icon-kefu', href: '/qyhj/hjsh'},
+						{id:'hjfw', title:'函件服务', icon: 'icon-kefu', href: '/qyhj/hjfw'},
+						{id:'hjfwtj', title:'函件服务统计', icon: 'icon-kefu', href: '/qyhj/hjfwtj'},
+						{id:'btclgl', title:'报停车辆管理', icon: 'icon-kefu', href: '/qyhj/btclgl'},
+						{id:'btcltj', title:'报停车辆统计', icon: 'icon-kefu', href: '/qyhj/btcltj'},
+					],
+					gdxt: [
+						{id:'gdpf', title:'工单派发', icon: 'icon-kefu', href: '/gdxt/gdpf'},
+						{id:'gdgl', title:'工单管理', icon: 'icon-kefu', href: '/gdxt/gdgl'},
+						{id:'gdtj', title:'工单统计', icon: 'icon-kefu', href: '/gdxt/gdtj'}
+					],
+					wxgl: [
+						{id:'wxzlbg', title:'维修质量报告', icon: 'icon-kefu', href: '/wxgl/wxzlbg'},
+						{id:'wxjlcx', title:'维修记录查询', icon: 'icon-kefu', href: '/wxgl/wxjlcx'},
+						{id:'wxjltj', title:'维修记录统计', icon: 'icon-kefu', href: '/wxgl/wxjltj'}
+					],
+					dldd: [
+						{id:'dlddcx', title:'动力调度查询', icon: 'icon-kefu', href: '/dldd/dlddcx'},
+						{id:'dlddtj', title:'动力调度统计', icon: 'icon-kefu', href: '/dldd/dlddtj'}
+					],
+					fwpt: [
+						{id:'qyfzxcx', title:'企业分中心查询', icon: 'icon-kefu', href: '/fwpt/qyfzxcx'},
+						{id:'qyfzxtj', title:'企业分中心统计', icon: 'icon-kefu', href: '/fwpt/qyfzxtj'},
+						{id:'wxglcx', title:'维修管理查询', icon: 'icon-kefu', href: '/fwpt/wxglcx'},
+						{id:'wxgltj', title:'维修管理统计', icon: 'icon-kefu', href: '/fwpt/wxgltj'},
+						{id:'wazcx', title:'终端未安装查询', icon: 'icon-kefu', href: '/fwpt/wazcx'},
+						{id:'aztj', title:'安装情况统计', icon: 'icon-kefu', href: '/fwpt/aztj'},
+						{id:'ydaz', title:'月度安装分析', icon: 'icon-kefu', href: '/fwpt/ydaz'}
+					],
+					hyyx: [
+						{id:'dcyyqk', title:'单车营运情况', icon: 'icon-kefu', href: '/hyyx/dcyyqk'},
+						{id:'hyyyqk', title:'行业营运情况', icon: 'icon-kefu', href: '/hyyx/hyyyqk'},
+						{id:'hypjyxqk', title:'行业平均运行情况', icon: 'icon-kefu', href: '/hyyx/hypjyxqk'},
+						{id:'ztyyqs', title:'总体营运趋势', icon: 'icon-kefu', href: '/hyyx/ztyyqs'},
+						{id:'qyclyyqk', title:'企业车辆营运情况', icon: 'icon-kefu', href: '/hyyx/qyclyyqk'},
+						{id:'jsysrqk', title:'驾驶员收入情况', icon: 'icon-kefu', href: '/hyyx/jsysrqk'},
+						{id:'clyxph', title:'车辆运行排行', icon: 'icon-kefu', href: '/hyyx/clyxph'},
+						{id:'ylxqrd', title:'运力需求热点', icon: 'icon-kefu', href: '/hyyx/ylxqrd'},
+						{id:'dcrdod', title:'打车热点OD分析', icon: 'icon-kefu', fullPath: '/hyyx/dcrdod', children: [
+								{id:'odyysj', title:'OD营运数据分析', icon: 'icon-kefu', href: '/hyyx/dcrdod/odyysj'},
+								{id:'odlxtj', title:'OD流向统计', icon: 'icon-kefu', href: '/hyyx/dcrdod/odlxtj'},
+								{id:'odlxt', title:'OD流向图', icon: 'icon-kefu', href: '/hyyx/dcrdod/odlxt'},
+							]
+						},
+						{id:'yjtfwz', title:'夜间停放位置分析', icon: 'icon-kefu', href: '/hyyx/yjtfwz'},
+						{id:'jsywftj', title:'驾驶员违法统计', icon: 'icon-kefu', href: '/hyyx/jsywftj'},
+						{id:'tscx', title:'投诉查询', icon: 'icon-kefu', href: '/hyyx/tscx'}
+					],
+					sjdj: [
+						{id:'clxx', title:'车辆信息', icon: 'icon-kefu', href: '/sjdj/clxx'},
+						{id:'jsyxx', title:'驾驶员信息', icon: 'icon-kefu', href: '/sjdj/jsyxx'},
+						{id:'gsxx', title:'公司信息', icon: 'icon-kefu', href: '/sjdj/gsxx'},
+						{id:'jbxx', title:'交班信息', icon: 'icon-kefu', href: '/sjdj/jbxx'},
+						{id:'fwzlpt', title:'服务质量平台', icon: 'icon-kefu', href: '/sjdj/fwzlpt'}
+					],
+					zffw: [
+						{id:'zfmxcx', title:'支付明细查询', icon: 'icon-kefu', href: '/zffw/zfmxcx'},
+						{id:'zfzdtf', title:'支付账单统计', icon: 'icon-kefu', href: '/zffw/zfzdtf'}
+					]
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+			});
+		},
+		methods: {
+			handleLeftBarMouseenter() {
+				this.hasHoverLeftBar = true;
+			},
+			handleLeftBarMouseleave() {
+				this.hasHoverLeftBar = false;
+			},
+			handleSecondaryDisplayState(state) {
+				// console.info('handleSecondaryDisplayState:', state)
+				this.hasSecondaryMenu = state;
+			},
+			handleSystemItemClick(item) {
+				// console.info('handleSystemItemClick-----1:', item)
+			}
+		},
+		components: {
+			'tw-header': TWHeader,
+			'tw-icon': TWIcon,
+			'tw-system-menu': TWSystemMenu
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-template {
+		$leftWidth: 50px;
+		$leftWidth__hover: 300px;
+
+		&-left {
+			width: $leftWidth;
+			background-color: #113f67;
+
+			& + .tw-template-body {
+				width: calc(100% - #{$leftWidth});
+				margin-left: $leftWidth;
+			}
+			&.hover, &.active {
+				width: $leftWidth__hover;
+
+				& + .tw-template-body {
+					width: calc(100% - #{$leftWidth__hover});
+					margin-left: $leftWidth__hover;
+				}
+			}
+		}
+	}
+	.tw-header {
+		padding-left: 20px;
+	}
+</style>

@@ -1,0 +1,56 @@
+import Vue from 'vue'
+import Vuex from 'vuex'
+import axios from 'axios'
+import _ from 'underscore'
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    licensePlateNumber: [],
+    companyName: [],
+    faultTypeList: [
+      {id: '1', label: '有定位无营运'},
+      {id: '2', label: '有营运无定位'},
+      {id: '3', label: '有抓拍无定位无营运'},
+      {id: '4', label: '7天无定位无营运'},
+      {id: '5', label: '空重车无变化'},
+      {id: '6', label: '视频黑屏'},
+      {id: '7', label: '视频移位'},
+      {id: '8', label: '视频断线'}
+    ]
+  },
+  mutations: {
+    setLicensePlateNumber(state, dataList) {
+      state.licensePlateNumber = dataList;
+    },
+    setCompanyName(state, dataList) {
+      state.companyName = dataList;
+    }
+  },
+  getters: {
+    getLPNumber: state => state.licensePlateNumber,
+    getCompanyName: state => state.companyName,
+    getFaultType: state => state.faultTypeList
+  },
+  actions: {
+    getLicensePlateNumberList({commit}, baseURL) {
+      axios.get('common/vehicle', {baseURL}).then(res => {
+        commit('setLicensePlateNumber', _.map(res.data, item => {
+          return {label: item.VEHICLE_NO, value: item.VEHICLE_NO}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    getCompanyNameList({commit}, baseURL) {
+      axios.get('common/company', {baseURL}).then(res => {
+        commit('setCompanyName', _.map(res.data, item => {
+          return {value: item.COMP_NAME, label: item.COMP_NAME}
+        }) || []);
+      }).catch(function (error) {
+        console.log(error);
+      });
+    }
+  }
+})

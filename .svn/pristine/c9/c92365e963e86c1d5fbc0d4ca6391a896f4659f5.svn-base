@@ -1,0 +1,118 @@
+<!--交班信息-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="AUTO_NUM" label="车牌号码" width="140"></el-table-column>
+				<el-table-column prop="COM_NAME" label="公司名称" width="280"></el-table-column>
+				<el-table-column prop="LICENSE_NUMBER" label="服务资格证号" width="180"></el-table-column>
+				<el-table-column prop="HANDOVER_TIME" label="交班时间" width="160"></el-table-column>
+				<el-table-column prop="HANDOVERDIR" label="方向" width="100"></el-table-column>
+				<el-table-column prop="HANDOVERADDR" label="地点" min-width="280"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "handoverInfo",
+		data() {
+			return {
+				query: {
+					vehicle: ''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getHandoverInfo();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getHandoverInfo(){
+				this.table.loading = true;
+				const {vehicle} = this.query;
+				const {currentPage,pageSize} = this.table;
+				axios.get('transportationDataAccess/getHandoverInfo', {
+					baseURL: this.baseURL,
+					params: {
+						vehicle:vehicle,
+						currentPage:currentPage,
+						pageSize:pageSize
+					}
+				}).then(res => {
+					this.table.data = res.data.datas || [];
+					this.table.total = res.data.count;
+					this.table.loading = false;
+				})
+			},
+			queryVehicleSearch(query, cb) {
+				if(query.legth < 3) cb = null;
+				else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getHandoverInfo();
+			},
+			handleExportClick() {
+				const {vehicle} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}transportationDataAccess/getHandoverInfoExcel?vehicle=${vehicle}`);
+				}).catch(() => {
+				});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+				this.getHandoverInfo();
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

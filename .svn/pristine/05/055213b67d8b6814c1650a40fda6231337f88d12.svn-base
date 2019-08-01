@@ -1,0 +1,142 @@
+<!--终端未安装查询-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="COMPANY_NAME" label="业户名称" width="200"></el-table-column>
+				<el-table-column prop="AREA_NAME" label="行政区划名称" min-width="200"></el-table-column>
+				<el-table-column prop="BUSINESS_SCOPE_NAME" label="经营范围名称" min-width="200"></el-table-column>
+				<el-table-column prop="COMPANY_LICENSE_NUMBER" label="经营许可证号" width="120"></el-table-column>
+				<el-table-column prop="IS_EXPIRED" label="证照是否过期" width="120"></el-table-column>
+				<el-table-column prop="PLATE_NUMBER" label="车牌号码" width="140"></el-table-column>
+				<el-table-column prop="PLATE_COLOR" label="车牌颜色" width="140"></el-table-column>
+				<el-table-column prop="VEHICLE_TYPE_NAME" label="车辆类型" width="120"></el-table-column>
+				<el-table-column prop="BRAND" label="厂牌" width="120"></el-table-column>
+				<el-table-column prop="MODEL" label="型号" width="140"></el-table-column>
+				<el-table-column prop="CREATED_TIME" label="创建时间" width="140"></el-table-column>
+				<el-table-column prop="UPDATED_TIME" label="更新时间" width="140"></el-table-column>
+				<el-table-column prop="PURCHASE_DATE" label="购车日期" width="140"></el-table-column>
+				<el-table-column prop="VIN" label="车辆识别代码/车架号" width="120"></el-table-column>
+				<el-table-column prop="FUEL_NAME" label="燃料类型" width="120"></el-table-column>
+				<el-table-column prop="LICENSE_ISSUING_AUTHORITY" label="道路运输证核发机关" width="120"></el-table-column>
+				<el-table-column prop="LICENSE_VALID_PERIOD_FROM" label="道路运输证有效期起" width="120"></el-table-column>
+				<el-table-column prop="LICENSE_VALID_PERIOD_END" label="道路运输证有效期止" width="120"></el-table-column>
+				<el-table-column prop="ANNUAL_REVIEW_VALID_PERIOD_S" label="年审有效期起" width="120"></el-table-column>
+				<el-table-column prop="ANNUAL_REVIEW_VALID_PERIOD_END" label="年审有效期止" width="120"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "TerminalQueryNotInstalled",
+		data() {
+			return {
+				query:{
+					vehicle: '',
+					stime: '',
+					etime:''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = moment().format('YYYY-MM-DD 00:00:00');
+				this.query.etime = moment().format('YYYY-MM-DD 23:59:59');
+				this.getTerminalInstalled();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage - 1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			getTerminalInstalled(){
+				this.table.loading = true;
+				const {vehicle, stime, etime} = this.query;
+				axios.get('servicePlatformUsage/getTerminalInstalled', {
+					baseURL: this.baseURL,
+					params: {
+						plateNumber:vehicle,
+						stime: stime && moment(stime).format('YYYY-MM-DD 00:00:00'),
+						etime: etime && moment(etime).format('YYYY-MM-DD 23:59:59')
+					}
+				}).then(res => {
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			queryVehicleSearch(query, cb) {
+				if(query.legth < 3) cb = null;
+				else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getTerminalInstalled();
+			},
+			handleExportClick() {
+				const {vehicle, stime, etime} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}servicePlatformUsage/getTerminalInstalledExcel?vehicle=${vehicle}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {
+				});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

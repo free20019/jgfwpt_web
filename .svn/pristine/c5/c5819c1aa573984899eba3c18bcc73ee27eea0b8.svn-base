@@ -1,0 +1,94 @@
+<!--运力需求热点-->
+<template>
+	<el-amap ref="map" vid="amap" :center="map.center" :zoom="map.zoom" :plugin="map.plugin" :events="map.events" :amap-manager="amapManager" v-loading="table.loading">
+	</el-amap>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import { AMapManager} from 'vue-amap';
+	import VueAMap from 'vue-amap';
+
+	let amapManager = new VueAMap.AMapManager();
+	export default {
+		name: "CapacityDemandHotsPot",
+		data() {
+			return {
+				table: {
+					loading: false
+				},
+				HotsPotList:[],
+				amapManager,
+				map: {
+					checked: false,
+					center: [120.170076, 30.277559],
+					zoom: 14,
+					plugin: [],
+					events: {
+						init(o) {
+							let marker = new AMap.Marker({
+								position: [120.170076, 30.277559]
+							});
+							marker.setMap(o);
+						}
+					},
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getCapacityDemandHotsPot();
+			});
+		},
+		methods: {
+			getCapacityDemandHotsPot(){
+				this.table.loading = true;
+				axios.get('industryOperation/getcapacitydemandhotspot', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					console.log("1111111111=",res.data);
+					if(res.data.length>0){
+						this.rlt(res.data);
+					}
+					this.table.loading = false;
+				}).catch(function (error) {
+					console.error(error);
+				});
+			},
+			rlt(data){
+				if (!isSupportCanvas()) {
+					alert('热力图仅对支持canvas的浏览器适用,您所使用的浏览器不能使用热力图功能,请换个浏览器试试~')
+				}
+				_.filter(data, (item, index) => {
+					this.HotsPotList.push({lng:item.DEP_LATI,lat:item.DEP_LONGI,count:1});
+				});
+				console.log("222222222222=",amapManager.getMap());
+				amapManager.getMap().plugin(["AMap.Heatmap"], function() {
+					let heatmap = new AMap.Heatmap(amapManager.getMap(), {
+						radius: 50, //给定半径
+						opacity: [0, 0.8],
+					});
+					//设置数据集：该数据为北京部分“公园”数据
+					this.heatmap.setDataSet({
+						data: this.HotsPotList,
+						max: 100
+					});
+				});
+				//判断浏览区是否支持canvas
+				function isSupportCanvas() {
+					let elem = document.createElement('canvas');
+					return !!(elem.getContext && elem.getContext('2d'));
+				}
+			}
+		},
+	}
+</script>
+	.tw-map {
+		width: 100%;
+		height: 100%;
+	}
+<style scoped>
+
+</style>

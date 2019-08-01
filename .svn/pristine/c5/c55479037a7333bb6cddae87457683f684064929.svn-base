@@ -1,0 +1,116 @@
+<!--回场报表统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-input v-model="query.fulfill" placeholder="完成率"></el-input>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60" :resizable="false" fixed></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" width="280" fixed></el-table-column>
+				<el-table-column prop="clzs" label="车辆总数" width="200" show-overflow-tooltip></el-table-column>
+				<el-table-column prop="zccl" label="正常回场车辆数" width="200"></el-table-column>
+				<el-table-column prop="yccl" label="异常车辆数" width="200"></el-table-column>
+				<el-table-column prop="hccgl" label="回场完成率" min-width="200" :resizable="false"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "ReturnReportStatistics",
+		data() {
+			return {
+				query:{
+					companyName: '',
+					fulfill: ''
+				},
+				companyList: [],
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = moment().format('YYYY-MM-DD 00:00:00');
+				this.query.etime = moment().format('YYYY-MM-DD 23:59:59');
+				this.getReportStatistics();
+			});
+		},
+		computed: {
+			...mapGetters(['getCompanyName']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage - 1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			queryCompanyNameSearch(query, cb) {
+				cb(_.filter(this.getCompanyName, item => item.label.indexOf(query) > -1));
+			},
+			getReportStatistics(){
+				this.table.loading = true;
+				const {companyName,fulfill} = this.query;
+				axios.get('area/reportstatistics', {
+					baseURL: this.baseURL,
+					params: {
+						companyName,
+						fulfill
+					}
+				}).then(res => {
+					console.log(res.data);
+					this.table.data = _.map(res.data, item => {
+						return {
+							gsmc: item.COMPANY_NAME,
+							clzs: item.CLZS,
+							zccl: item.ZCCL,
+							yccl: item.YCCL,
+							hccgl: item.HCCGL,
+						}
+					});
+					this.table.total = this.table.data.length;
+					this.table.currentPage = 1;
+					this.table.loading = false;
+				}).catch(function (error) {
+					console.log(error);
+				});
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getReportStatistics();
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

@@ -1,0 +1,17 @@
+import Vue from 'vue'
+import App from './App.vue'
+import router from './router'
+import store from './store'
+import 'echarts'
+import './plugins/element.js'
+import './plugins/treeselect.js'
+
+Vue.config.productionTip = false
+Vue.prototype.baseURL = 'http://192.168.11.224:8080/jgfwpt'
+
+
+new Vue({
+  router,
+  store,
+  render: h => h(App)
+}).$mount('#app')

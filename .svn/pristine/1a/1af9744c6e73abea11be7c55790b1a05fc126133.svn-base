@@ -1,0 +1,207 @@
+<!--维修记录查询-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"
+												 @select="handleVehicleSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"
+												 @select="handleCompanyNameSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="100%" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" width="260"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" width="140"></el-table-column>
+				<el-table-column prop="simk" label="SIM卡号" width="140"></el-table-column>
+				<el-table-column prop="chez" label="车主" width="120"></el-table-column>
+				<el-table-column prop="sjhm" label="手机号码" width="140"></el-table-column>
+				<el-table-column prop="gzlx" label="故障类型" width="200"></el-table-column>
+				<el-table-column prop="gzyy" label="故障原因" width="280"></el-table-column>
+				<el-table-column prop="gzfssj" label="故障发生时间" width="160"></el-table-column>
+				<el-table-column prop="wxrxm" label="维修人姓名" width="120"></el-table-column>
+				<el-table-column prop="wxqk" label="维修情况" width="240"></el-table-column>
+				<el-table-column prop="wxdd" label="维修地点" width="280"></el-table-column>
+				<el-table-column prop="wxfy" label="维修费用" width="120"></el-table-column>
+				<el-table-column prop="wxjd" label="维修进度" width="140"></el-table-column>
+				<el-table-column prop="wxjg" label="维修结果" width="240"></el-table-column>
+				<el-table-column prop="sxsj" label="送修时间" width="160"></el-table-column>
+				<el-table-column prop="wxsj" label="完修时间" width="160"></el-table-column>
+				<el-table-column label="评价" width="120">
+					<template slot-scope="scope">
+						<el-button class="tw-table-button" type="text" size="mini" v-if="!scope.row.khmyd" @click="handleEvaluationClick">评价</el-button>
+						<span v-else>已评价</span>
+					</template>
+				</el-table-column>
+				<el-table-column prop="ghao" label="工号" width="180"></el-table-column>
+				<el-table-column prop="khmyd" label="客户满意度" width="120"></el-table-column>
+				<el-table-column prop="beiz" label="备注" width="380"></el-table-column>
+			</el-table>
+		</div>
+		<el-dialog title="评价" :visible.sync="dialog.display" width="400px">
+			<el-form :model="dialog.form" label-width="80px">
+				<el-form-item label="工号">
+					<el-input v-model="dialog.form.jobNumber"></el-input>
+				</el-form-item>
+				<el-form-item label="满意度">
+					<el-select v-model="dialog.form.satisfaction" style="width: 100%;">
+						<el-option v-for="item in dialog.satisfactionOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+					</el-select>
+				</el-form-item>
+				<el-form-item label="备注">
+					<el-input v-model="dialog.form.remarks"></el-input>
+				</el-form-item>
+			</el-form>
+			<div slot="footer" class="dialog-footer">
+				<el-button @click="handleDialogCancelClick">取 消</el-button>
+				<el-button type="primary" @click="handleDialogSubmitClick">确 定</el-button>
+			</div>
+		</el-dialog>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+
+	export default {
+		name: "MaintenanceRecordInquiry",
+		data() {
+			return {
+				query:{
+					vehicle: '',
+					companyName: '',
+					stime: '',
+					etime:''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							gsmc: '杭州长运三运运输有限公司',
+							cphm: '浙A04222',
+							simk: '18248442811',
+							chez: '许冬和',
+							sjhm: '15968156528',
+							gzlx: '一般维修',
+							gzyy: '主机不通电',
+							gzfssj: '2019-02-19 16:49:49',
+							wxrxm: '陈湘达',
+							wxqk: '车上保险丝坏',
+							wxdd: '沈半路维修站',
+							wxfy: '0',
+							wxjd: '维修完成',
+							wxjg: '重摆定位天线',
+							sxsj: '2018-12-28 11:55:02',
+							wxsj: '2018-12-28 12:00:08',
+							ghao: '',
+							khmyd: '满意',
+							beiz: ''
+						},
+						{
+							gsmc: '杭州长运三运运输有限公司',
+							cphm: '浙A04222',
+							simk: '18248442811',
+							chez: '许冬和',
+							sjhm: '15968156528',
+							gzlx: '一般维修',
+							gzyy: '主机不通电',
+							gzfssj: '2019-02-19 16:49:49',
+							wxrxm: '陈湘达',
+							wxqk: '车上保险丝坏',
+							wxdd: '沈半路维修站',
+							wxfy: '0',
+							wxjd: '维修完成',
+							wxjg: '重摆定位天线',
+							sxsj: '2018-12-28 11:55:02',
+							wxsj: '2018-12-28 12:00:08',
+							ghao: '',
+							khmyd: '',
+							beiz: ''
+						}
+					]
+				},
+				dialog: {
+					display:false,
+					form: {
+						jobNumber: '',
+						satisfaction: '',
+						remarks: ''
+					},
+					satisfactionOption: [
+						{label: '满意', value: '满意'},
+						{label: '基本满意', value: '满基本意'},
+						{label: '不满意', value: '不满意'}
+					]
+				}
+			}
+		},
+		methods: {
+			/*接口*/
+			queryVehicleSearch(query, cb) {
+				cb(_.map(_.filter(['浙A04222', '浙A04238',
+					'浙A12112', '浙A13222', '浙A13238', '浙A13276',
+					'浙A23221', '浙A23222', '浙A23223',
+					'浙A32221', '浙A32244',
+					'浙A40322', '浙A40612', '浙A41132', '浙A42402',
+					'浙A51222', '浙A51382', '浙A51580',
+					'浙A61222', '浙A62222', '浙A63522', '浙A66002', '浙A68000',
+					'浙A72222', '浙A72382', '浙A76884',
+					'浙A80432', '浙A80662', '浙A83332', '浙A86622',
+					'浙A92222', '浙A93512', '浙A96622'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(['三全鲜食（北新泾店）', 'Hot honey 首尔炸鸡（仙霞路）', '新旺角茶餐厅',
+					'泷千家(天山西路店)', '胖仙女纸杯蛋糕（上海凌空店）', '贡茶', '豪大大香鸡排超级奶爸',
+					'茶芝兰（奶茶，手抓饼）', '十二泷町', '星移浓缩咖啡', '阿姨奶茶/豪大大', '新麦甜四季甜品炸鸡',
+					'Monica摩托主题咖啡店', '浮生若茶（凌空soho店）', 'NONO JUICE  鲜榨果汁', 'CoCo都可(北新泾店）',
+					'快乐柠檬（神州智慧店）', 'Merci Paul cafe', '猫山王（西郊百联店）', '枪会山', '纵食', '钱记',
+					'壹杯加', '唦哇嘀咖', '爱茜茜里(西郊百联)', '爱茜茜里(近铁广场)', '鲜果榨汁', '开心丽果',
+					'超级鸡车', '妙生活果园', '香宜度麻辣香锅', '凡仔汉堡', '港式小铺', '蜀香源麻辣香锅',
+					'北京饺子馆', '饭典', '焦耳', '动力鸡车', '浏阳蒸菜', '四海游龙', '樱花食堂',
+					'壹分米客家传统调制米粉', '福荣祥烧腊', '速记黄焖鸡米饭', '红辣椒麻辣烫', '(小杨生煎)西郊百联餐厅',
+					'阳阳麻辣烫', '南拳妈妈龙虾盖浇饭'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			/*事件*/
+			handleVehicleSelect(item) {},
+			handleCompanyNameSelect(item) {},
+			handleQueryClick() {},
+			handleExportClick() {},
+			handleEvaluationClick(item) {
+				this.dialog.display = true;
+			},
+			handleDialogCancelClick() {
+				this.dialog.display = false;
+			},
+			handleDialogSubmitClick() {
+				this.dialog.display = false;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

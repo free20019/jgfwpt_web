@@ -1,0 +1,112 @@
+<!--终端未安装查询-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"
+												 @select="handleVehicleSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="100%" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="ywqk" label="业务区块" width="200"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" min-width="200"></el-table-column>
+				<el-table-column prop="fgsmc" label="分公司名称" min-width="200"></el-table-column>
+				<el-table-column prop="clbh" label="车辆编号" width="120"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" width="120"></el-table-column>
+				<el-table-column prop="txlx" label="通信类型" width="140"></el-table-column>
+				<el-table-column prop="simk" label="SIM卡号" width="140"></el-table-column>
+				<el-table-column prop="rylx" label="燃油类型" width="120"></el-table-column>
+				<el-table-column prop="czxm" label="车主姓名" width="120"></el-table-column>
+				<el-table-column prop="czdh" label="车主电话" width="140"></el-table-column>
+				<el-table-column prop="bbdh" label="白班电话" width="140"></el-table-column>
+				<el-table-column prop="wbdh" label="晚班电话" width="140"></el-table-column>
+				<el-table-column prop="clys" label="车辆颜色" width="120"></el-table-column>
+				<el-table-column prop="cpys" label="车牌颜色" width="120"></el-table-column>
+				<el-table-column prop="czsj" label="初装时间" width="160"></el-table-column>
+				<el-table-column prop="clzt" label="车辆状态" width="120"></el-table-column>
+			</el-table>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+
+	export default {
+		name: "TerminalQueryNotInstalled",
+		data() {
+			return {
+				query:{
+					vehicle: '',
+					stime: '',
+					etime:''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							ywqk: '萧山出租',
+							gsmc: '浙江通信产业服务有限公司',
+							fgsmc: '浙江通信产业服务有限公司',
+							clbh: 'A198052',
+							cphm: '浙APT619',
+							txlx: '移动GPRS专线',
+							simk: '18324428059',
+							rylx: '双燃料',
+							czxm: '丁建中',
+							czdh: '18868163887',
+							bbdh: '15669488250',
+							wbdh: '18868163887',
+							clys: '宝石蓝',
+							cpys: '蓝色',
+							czsj: '2016-03-11 09:11:57',
+							clzt: '正常',
+						}
+					]
+				}
+			}
+		},
+		methods: {
+			/*接口*/
+			queryVehicleSearch(query, cb) {
+				cb(_.map(_.filter(['浙A04222', '浙A04238',
+					'浙A12112', '浙A13222', '浙A13238', '浙A13276',
+					'浙A23221', '浙A23222', '浙A23223',
+					'浙A32221', '浙A32244',
+					'浙A40322', '浙A40612', '浙A41132', '浙A42402',
+					'浙A51222', '浙A51382', '浙A51580',
+					'浙A61222', '浙A62222', '浙A63522', '浙A66002', '浙A68000',
+					'浙A72222', '浙A72382', '浙A76884',
+					'浙A80432', '浙A80662', '浙A83332', '浙A86622',
+					'浙A92222', '浙A93512', '浙A96622'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			/*事件*/
+			handleVehicleSelect(item) {},
+			handleQueryClick() {},
+			handleExportClick() {}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

@@ -1,0 +1,115 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export default new Router({
+  base: process.env.BASE_URL,
+  routes: [
+    {
+      path: '/',
+      name: 'index',
+			redirect: '/zdfx/zjgz',
+      component: () => import('./views/Index.vue'),
+			children: [
+				/*终端分析统计*/
+				{/*主机故障*/
+					path: '/zdfx/zjgz',
+					name: 'HostFailure',
+					component: () => import('./views/terminalAnalysis/HostFailure.vue')
+				},
+				{/*终端异常告警*/
+					path: '/zdfx/zdyc',
+					name: 'TerminalAbnormalAlarm',
+					component: () => import('./views/terminalAnalysis/TerminalAbnormalAlarm.vue')
+				},
+				{/*完好率统计*/
+					path: '/zdfx/whltj',
+					name: 'GoodRateStatistics',
+					component: () => import('./views/terminalAnalysis/GoodRateStatistics.vue')
+				},
+				{/*在线车辆统计*/
+					path: '/zdfx/clgl/zxcltj',
+					name: 'OnlineVehicleStatistics',
+					component: () => import('./views/terminalAnalysis/OnlineVehicleStatistics.vue')
+				},
+				{/*未上线车辆查询*/
+					path: '/zdfx/clgl/wsxclcx',
+					name: 'UnlistedVehicleInquiry',
+					component: () => import('./views/terminalAnalysis/UnlistedVehicleInquiry.vue')
+				},
+				{/*视频异常*/
+					path: '/zdfx/spyc',
+					name: 'VideoAnomaly',
+					component: () => import('./views/terminalAnalysis/VideoAnomaly.vue')
+				},
+				/*企业函件管理*/
+				{
+					path: '/qyhj/btgl',
+					name: 'hotLineLog',
+					component: () => import('./views/enterpriseLetters/ReportManage.vue'),
+				},
+				/*工单管理统计*/
+				/*维护管理统计*/
+				{/*维修质量报告*/
+					path: '/wxgl/wxzlbg',
+					name: 'MaintenanceQualityReport',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceQualityReport.vue')
+				},
+				{/*维修记录查询*/
+					path: '/wxgl/wxjlcx',
+					name: 'MaintenanceRecordInquiry',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceRecordInquiry.vue')
+				},
+				{/*维修记录统计*/
+					path: '/wxgl/wxjltj',
+					name: 'MaintenanceRecordStatistics',
+					component: () => import('./views/maintenanceManageSystem/MaintenanceRecordStatistics.vue')
+				},
+				/*运力调度管理*/
+				{/*运力调度查询*/
+					path: '/dldd/dlddcx',
+					name: 'PowerSchedulingQuery',
+					component: () => import('./views/capacityDispatchManage/PowerSchedulingQuery.vue')
+				},
+				{/*动力调度统计*/
+					path: '/dldd/dlddtj',
+					name: 'PowerSchedulingStatistics',
+					component: () => import('./views/capacityDispatchManage/PowerSchedulingStatistics.vue')
+				},
+				/*服务平台使用情况*/
+				{/*企业分中心查询*/
+					path: '/fwpt/qyfzxcx',
+					name: 'EnterpriseSubCenterQuery',
+					component: () => import('./views/servicePlatformUsage/EnterpriseSubCenterQuery.vue')
+				},
+				{/*企业分中心统计*/
+					path: '/fwpt/qyfzxtj',
+					name: 'EnterpriseSubCenterStatistics',
+					component: () => import('./views/servicePlatformUsage/EnterpriseSubCenterStatistics.vue')
+				},
+				{/*维修管理查询*/
+					path: '/fwpt/wxglcx',
+					name: 'MaintenanceManageInquiry',
+					component: () => import('./views/servicePlatformUsage/MaintenanceManageInquiry.vue')
+				},
+				{/*维修管理统计*/
+					path: '/fwpt/wxgltj',
+					name: 'MaintenanceManageStatistics',
+					component: () => import('./views/servicePlatformUsage/MaintenanceManageStatistics.vue')
+				},
+				/*行业运行情况*/
+				/*运政数据接入*/
+				/*支付服务*/
+			]
+    },
+    {
+      path: '/about',
+      name: 'about',
+      // route level code-splitting
+      // this generates a separate chunk (about.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
+    }
+  ]
+})

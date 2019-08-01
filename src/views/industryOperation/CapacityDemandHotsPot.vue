@@ -1,0 +1,177 @@
+<!--运力需求热点-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-amap ref="map" vid="amap" :center="map.center" :zoom="map.zoom" :plugin="map.plugin" :events="map.events" :amap-manager="amapManager" v-loading="table.loading">
+		</el-amap>
+		<div class="tw-map-query-panel">
+			<div class="tw-icon tw-map-query-show iconfont" style="font-size: 16px;" @click="handleMapPanelOpenClick">上车时间分布</div>
+		</div>
+		<div class="tw-map-panel tw-map-panel__float" v-if="panel.display">
+			<v-chart class="vehicleChart" v-loading="table.loading" :options="vehicleChartOptions" ref="vehicleChart"/>
+			<div class="tw-map-panel-btn__close" @click="handleMapPanelCloseClick">&times;</div>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import {AMapManager} from 'vue-amap';
+
+	let amapManager = new AMapManager();
+	export default {
+		name: "CapacityDemandHotsPot",
+		data() {
+			return {
+				table: {
+					loading: false
+				},
+				HotsPotList:[],
+				heatmap:null,
+				amapManager,
+				map: {
+					checked: false,
+					center: [120.170076, 30.277559],
+					zoom: 14,
+					plugin: [],
+					events: {},
+				},
+				panel: {
+					display: false,
+				},
+				vehicleChartOptions: {
+					color: ['#19d4ae', '#5ab1ef', '#fa6e86', '#ffb980', '#0067a6', '#c4b4e4', '#d87a80', '#9cbbff', '#d9d0c7', '#87a997', '#d49ea2', '#5b4947', '#7ba3a8'],
+					tooltip: {
+						trigger: 'axis'
+					},
+					legend: {
+						top: 20,
+						data:['上车数量']
+					},
+					grid: [
+						{
+							top: 60,
+							left: 20,
+							right: 20,
+							bottom: 40,
+							containLabel: true
+						}
+					],
+					xAxis: {
+						axisTick: {
+							alignWithLabel: true
+						},
+						type: 'category',
+						data: []
+					},
+					yAxis: {
+						type: 'value'
+					},
+					series: [
+						{
+							name:'上车数量',
+							type:'line',
+							stack: '上车数量',
+							data:[],
+							markLine : {
+								data : [
+									{type : 'average', name: '平均值'}
+								]
+							}
+						}
+					]
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				window.onresize = () => {
+					this.$refs.vehicleChart.resize();
+				};
+				this.getCapacityDemandHotsPot();
+				this.getCapacityDemandHotsPotDriver();
+			});
+		},
+		methods: {
+			getCapacityDemandHotsPot(){
+				this.table.loading = true;
+				axios.get('industryOperation/getcapacitydemandhotspot', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					console.log("1111111111=",res.data);
+					if(res.data.length>0){
+						this.rlt(res.data);
+					}
+					this.table.loading = false;
+				}).catch(function (error) {
+					console.error(error);
+				});
+			},
+			rlt(data){
+				if (!isSupportCanvas()) {
+					alert('热力图仅对支持canvas的浏览器适用,您所使用的浏览器不能使用热力图功能,请换个浏览器试试~')
+				}
+				_.filter(data, (item, index) => {
+					this.HotsPotList.push({lng:item.DEP_LATI,lat:item.DEP_LONGI,count:1});
+				});
+				amapManager.getMap().plugin(["AMap.Heatmap"], function() {
+				});
+				this.heatmap = new AMap.Heatmap(amapManager.getMap(), {
+					radius: 50, //给定半径
+					opacity: [0, 0.8],
+				});
+				//设置数据集：该数据为北京部分“公园”数据
+				this.heatmap.setDataSet({
+					data: this.HotsPotList,
+					max: 100
+				});
+				//判断浏览区是否支持canvas
+				function isSupportCanvas() {
+					let elem = document.createElement('canvas');
+					return !!(elem.getContext && elem.getContext('2d'));
+				}
+			},
+			getCapacityDemandHotsPotDriver(){
+				axios.get('industryOperation/getcapacitydemandhotspotdriver', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					console.log("222222222222=",res.data);
+					if(res.data.length>0){
+						this.vehicleChartOptions.xAxis.data=[];
+						this.vehicleChartOptions.series[0].data=[];
+						_.map(res.data,item=>{
+							this.vehicleChartOptions.xAxis.data.push(item.DEP_TIME+"时");
+							this.vehicleChartOptions.series[0].data.push(item.C);
+						});
+					}
+				}).catch(function (error) {
+					console.error(error);
+				});
+			},
+			handleMapPanelCloseClick(){
+				this.panel.display=false;
+			},
+			handleMapPanelOpenClick(){
+				this.panel.display=true;
+			},
+		},
+	}
+</script>
+
+<style scoped>
+	.tw-map-query-panel {
+		cursor: pointer;
+		position: absolute;
+		top: 20px;
+		right: 20px;
+		padding: 10px;
+		border-radius: 4px;
+		background-color: #ffffff;
+	}
+	.vehicleChart {
+		width: 100%;
+		height: 100%;
+	}
+</style>

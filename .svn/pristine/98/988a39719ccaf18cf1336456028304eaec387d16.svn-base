@@ -1,0 +1,229 @@
+<!--完好率统计分析-->
+<template>
+	<div class="tw-template-wrapper">
+		<div class="tw-template-body">
+			<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+				<el-form-item>
+					<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+													 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"
+													 @select="handleCompanyNameSelect"></el-autocomplete>
+				</el-form-item>
+				<el-form-item>
+					<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+				</el-form-item>
+				<el-form-item>
+					<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+				</el-form-item>
+				<el-form-item>
+					<el-button type="primary" @click="handleQueryClick">查询</el-button>
+					<el-button type="primary" @click="handleExportClick">导出</el-button>
+				</el-form-item>
+			</el-form>
+			<div class="tw-query-panel">
+				<el-table :data="filterGoodrateList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+					<el-table-column type="index" label="序号" width="60"></el-table-column>
+					<el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+					<el-table-column prop="gzcls" label="故障车辆数" width="180"></el-table-column>
+					<el-table-column prop="gzl" label="故障率" width="180"></el-table-column>
+					<el-table-column prop="ywxcls" label="已维修车辆数" width="180"></el-table-column>
+					<el-table-column prop="xcl" label="修车率" width="180"></el-table-column>
+				</el-table>
+				<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+			</div>
+		</div>
+		<div class="tw-template-right">
+			<v-chart class="vehicleChart" v-loading="table.loading" :options="vehicleChartOptions" ref="vehicleChart"/>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import ECharts from 'vue-echarts'
+	import Malfunction from '../../components/TableColumn/Malfunction.vue'
+
+	export default {
+		name: "GoodRateStatistics",
+		data() {
+			return {
+				company: [],
+				dataLoading: false,
+				query: {
+					companyName: '',
+					stime: '',
+					etime: ''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+				vehicleChartOptions: {
+					color: ['#19d4ae', '#fa6e86', '#5ab1ef'],
+					tooltip: {
+						show: true,
+						trigger: 'item',
+						formatter: "{a} <br/>{b} : {c} ({d}%)"
+					},
+					legend: {
+						top: 60,
+						left: 'center',
+						data: ['已维修', '故障', '完好']
+					},
+					series: [
+						{
+							name: '车辆',
+							type: 'pie',
+							radius: '55%',
+							center: ['50%', '50%'],
+							data: [
+								{name: '已维修', value: 3530},
+								{name: '故障', value: 2923},
+								{name: '完好', value: 1393}
+							],
+							itemStyle: {
+								emphasis: {
+									shadowBlur: 10,
+									shadowOffsetX: 0,
+									shadowColor: 'rgba(0, 0, 0, 0.5)'
+								}
+							}
+						}
+					]
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = moment(moment().format('YYYY-MM-DD 00:00:00'));
+				this.query.etime = moment(moment().format('YYYY-MM-DD 23:59:59'));
+				this.getCompany();
+				this.getGoodrate();
+				window.onresize = () => {
+					this.$refs.vehicleChart.resize();
+				}
+			});
+		},
+		computed: {
+			filterGoodrateList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			getCompany() {
+				axios.get('/common/company', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					this.company = _.map(res.data, item => item.COMP_NAME) || [];
+				}).catch(function (error) {
+					console.log(error);
+				});
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(this.company, item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			getGoodrate() {
+				const {companyName, stime, etime} = this.query;
+				this.table.loading = true;
+				axios.get('/terminal/goodrate', {
+					baseURL: this.baseURL,
+					params: {
+						companyName,
+						stime: stime && moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')
+					}
+				}).then(res => {
+					console.info(res.data);
+					let echart = res.data.echart;
+					this.vehicleChartOptions.series[0].data = [
+						{name: '已维修', value: _.pluck(echart, 'WXZS')[0]},
+						{name: '故障', value: _.pluck(echart, 'GZZS')[0]},
+						{name: '完好', value: (_.pluck(echart, 'ZS')[0] - _.pluck(echart, 'GZZS')[0])}
+					];
+					this.table.data = _.map(res.data.list, item => {
+						return {gsmc: item.COMP_NAME, gzcls: item.GZZS, gzl: item.GZL, ywxcls: item.WXZS, xcl: item.XCL}
+					});
+					this.table.total = this.table.data.length;
+					this.table.currentPage = 1;
+					this.table.loading = false;
+				}).catch(function (error) {
+						console.log(error);
+					});
+			},
+			/*事件*/
+			handleCompanyNameSelect(item) {
+			},
+			handleQueryClick() {
+				this.getGoodrate();
+				this.vehicleChartOptions.series[0].data = [
+					{name: '已维修', value: 2530},
+					{name: '故障', value: 2323},
+					{name: '完好', value: 2393}
+				]
+			},
+			handleExportClick() {
+				const {companyName, stime, etime} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}/terminal/goodratedc?companyName=${companyName}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {
+				});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			Malfunction,
+			'v-chart': ECharts
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-template {
+		&-wrapper {
+			overflow: hidden;
+		}
+
+		&-body {
+			width: calc(100% - 200px);
+		}
+
+		&-right {
+			right: -200px;
+			width: 400px;
+			background-color: #ffffff;
+			transition: box-shadow .5s ease, right .5s ease .2s;
+			z-index: 10;
+
+			&:hover {
+				right: 0;
+				box-shadow: -2px 0 6px #aaaaaa;
+			}
+		}
+	}
+
+	.vehicleChart {
+		width: 100%;
+		height: 100%;
+	}
+</style>

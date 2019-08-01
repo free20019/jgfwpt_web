@@ -1,0 +1,156 @@
+<!--夜间停放位置分析-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-amap class="tw-map-box" vid="regionMap" :amap-manager="map.amap" :zoom="map.zoom" :center="map.center">
+			<!--<el-amap-marker v-for="marker in map.markers" :position="marker"></el-amap-marker>-->
+			<!--<el-amap-polygon :path="positionArea"></el-amap-polygon>-->
+		</el-amap>
+		<div class="tw-map-query-panel">
+			<template v-if="mapPanel.display">
+				<div class="tw-map-query-header">
+					<tw-icon class="tw-map-query-close" icon="icon-shut-down" @click.native="handleMapPanelDisplay"></tw-icon>
+				</div>
+				<el-form :model="query" size="small" class="tw-map-query-bar">
+					<el-form-item>
+						<el-date-picker class="tw-map-query-item" v-model="query.time" type="date" placeholder="日期" @change="handleDateChange"></el-date-picker>
+					</el-form-item>
+				</el-form>
+				<div class="tw-query-panel">
+					<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+						<el-table-column type="index" label="序号" width="60"></el-table-column>
+						<el-table-column prop="rdqy" label="热点区域" min-width="140"></el-table-column>
+						<el-table-column label="车辆数" width="140">
+							<template slot-scope="scope">
+								<tw-unit :data="scope.row.cls" unit="辆"></tw-unit>
+							</template>
+						</el-table-column>
+					</el-table>
+					<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+				</div>
+			</template>
+			<tw-icon v-else class="tw-map-query-show" icon="icon-search" @click.native="handleMapPanelDisplay"></tw-icon>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import TWIcon from '../../components/TWIcon'
+	import {AMapManager} from 'vue-amap'
+	import {formatCustomizeDate, formatDate} from '../../assets/js/util'
+
+	export default {
+		name: "ParkingPlaceAtNight",
+		data() {
+			return {
+				query: {
+					time: '',
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							rdqy: '彭埠街道城东新城单元',
+							cls: 432
+						}
+					],
+					pageSize: 10,
+					currentPage: 1,
+					total: 0
+				},
+				map: {
+					amap: null,
+					zoom: 13,
+					center: [120.197521,30.24298],
+					markers: [],
+				},
+				mapPanel: {
+					display: true
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.map.amap = new AMapManager();
+				this.query.stime = formatDate(moment());
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			/*事件*/
+			handleMapPanelDisplay() {
+				this.mapPanel.display = !this.mapPanel.display;
+			},
+			handleDateChange() {
+				console.info('handleDateChange:', this.query.time)
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tw-unit': TWUnit,
+			'tw-icon': TWIcon
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-map {
+		&-query {
+			&-panel {
+				position: absolute;
+				top: 30px;
+				left: 50px;
+				max-height: calc(100% - 160px);
+				border: 1px solid #eeeeee;
+				border-radius: 4px;
+				box-shadow: 2px 2px 4px #aaaaaa;
+				background-color: #ffffff;
+				.el-form-item--mini.el-form-item, .el-form-item--small.el-form-item {
+						margin-bottom: 0;
+				}
+			}
+			&-close {
+				position: absolute;
+				top: 15px;
+				right: 5px;
+				padding: 5px;
+				transform: translateY(-50%);
+				cursor: pointer;
+				&:hover {
+					color: #e81123;
+				}
+			}
+			&-show {
+				padding: 10px;
+				cursor: pointer;
+				&:hover {
+					color: #409EFF;
+				}
+			}
+			&-bar {
+				position: static;
+				width: 400px;
+				padding-top: 30px;
+				border: none;
+				box-shadow: none;
+			}
+			&-item {
+				width: 100%;
+			}
+		}
+	}
+</style>

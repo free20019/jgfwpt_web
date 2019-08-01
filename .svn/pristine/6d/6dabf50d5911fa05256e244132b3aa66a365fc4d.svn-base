@@ -1,0 +1,211 @@
+<!--夜间停放位置分析-->
+<template>
+	<div class="tw-template-wrapper">
+		<div id="map" style="height: 100%;width: 100%;"></div>
+		<div class="tw-map-query-panel">
+			<template v-if="mapPanel.display">
+				<div class="tw-map-query-header">
+					<tw-icon class="tw-map-query-close" icon="icon-shut-down" @click.native="handleMapPanelDisplay"></tw-icon>
+				</div>
+				<el-form :model="query" size="small" class="tw-map-query-bar">
+					<el-form-item>
+						<el-date-picker class="tw-map-query-item" v-model="query.time" type="date" placeholder="日期" @change="handleDateChange"></el-date-picker>
+					</el-form-item>
+				</el-form>
+				<div class="tw-query-panel">
+					<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;" @row-click="test">
+						<el-table-column type="index" label="序号" width="60"></el-table-column>
+						<el-table-column prop="AREA_NAME" label="热点区域" min-width="140"></el-table-column>
+						<el-table-column prop="AREA_COUNT" label="车辆数" width="140"></el-table-column>
+					</el-table>
+					<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+				</div>
+			</template>
+			<tw-icon v-else class="tw-map-query-show" icon="icon-search" @click.native="handleMapPanelDisplay"></tw-icon>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import TWIcon from '../../components/TWIcon'
+	import {AMapManager} from 'vue-amap'
+	import {formatCustomizeDate, formatDate} from '../../assets/js/util'
+
+	export default {
+		name: "ParkingPlaceAtNight",
+		data() {
+			return {
+				query: {
+					time: '',
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 10,
+					currentPage: 1,
+					total: 0
+				},
+				map:null,
+				infoWindow: new AMap.InfoWindow({offset: new AMap.Pixel(0, -30)}),
+				mapPanel: {
+					display: true
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.time = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.getParkingPlaceAtNight();
+				this.map = new AMap.Map('map', {
+					resizeEnable: true, //是否监控地图容器尺寸变化
+					zoom:11 //初始化地图层级
+				});
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getParkingPlaceAtNight(){
+				const {time} = this.query;
+				axios.get('/industryOperation/getParkingPlaceAtNight', {
+					baseURL: this.baseURL,
+					params: {
+						time: time && moment(time).format('YYYY-MM-DD HH:mm:ss')
+					}
+				}).then(res => {
+					console.info(res.data)
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					let qd = res.data.qd[0];
+					let zd = res.data.zd;
+					for (let i=0; i<zd.length; i++){
+						this.setPolygon(zd[i].AREA_COORDINATES,zd[i].AREA_NAME,zd[i].COUNT_NUM,'1',zd[i]);
+					}
+					this.setPolygon(qd.AREA_COORDINATES,qd.AREA_NAME,"0",'0',qd);
+				})
+			},
+			setPolygon(obj,name,num,type,data) {
+				var polygonArr=new Array();//多边形覆盖物节点坐标数组
+				console.log(obj)
+				var zbs = obj.split(";");
+				for(var i=0;i<zbs.length;i++){
+					var zb = zbs[i].split(",");
+					polygonArr.push(new AMap.LngLat(zb[0],zb[1]));
+				}
+				var txt = "",ys="";
+				if(type == '0'){
+					txt = "区域名："+name;
+					ys = "#7b1fa2";
+				}else{
+					txt = "起点  至     "+name+"<br>数量："+num;
+					ys = "#1976d2";
+				}
+				var  polygon = new AMap.Polygon({
+					path: polygonArr,//设置多边形边界路径
+					strokeColor: "white", //线颜色
+					strokeOpacity: 0.8, //线透明度
+					strokeWeight: 0.8,    //线宽
+					fillColor: ys, //填充色
+					fillOpacity: 0.7//填充透明度
+				});
+				polygon.lxt = data;
+				polygon.setMap(this.map);
+				let inforWindow = new AMap.InfoWindow({
+					offset:new AMap.Pixel(0,0),
+					content:txt
+				});
+				AMap.event.addListener(polygon,"mouseover",e => {
+					inforWindow.open(this.map,new AMap.LngLat(obj.split(";")[0].split(",")[0],obj.split(";")[0].split(",")[1]));
+				});
+				AMap.event.addListener(this.map,"mouseout",e => {
+					inforWindow.close();
+				});
+			},
+			/*事件*/
+			test(event) {
+				let tbid = event.AREA_ID;
+				var mar = this.map.getAllOverlays();
+				for(var i=0; i<mar.length;i++){
+					if(mar[i].hasOwnProperty('lxt') && mar[i].lxt.AREA_ID==tbid){
+						AMap.event.trigger(mar[i],'mouseover');
+						this.map.setZoomAndCenter(13, [mar[i].lxt.AREA_COORDINATES.split(";")[0].split(",")[0], mar[i].lxt.AREA_COORDINATES.split(";")[0].split(",")[1]]);
+					}
+				}
+			},
+			handleMapPanelDisplay() {
+				this.mapPanel.display = !this.mapPanel.display;
+			},
+			handleDateChange() {
+				this.getParkingPlaceAtNight();
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tw-unit': TWUnit,
+			'tw-icon': TWIcon
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-map {
+		&-query {
+			&-panel {
+				position: absolute;
+				top: 30px;
+				left: 50px;
+				max-height: calc(100% - 160px);
+				border: 1px solid #eeeeee;
+				border-radius: 4px;
+				box-shadow: 2px 2px 4px #aaaaaa;
+				background-color: #ffffff;
+				.el-form-item--mini.el-form-item, .el-form-item--small.el-form-item {
+						margin-bottom: 0;
+				}
+			}
+			&-close {
+				position: absolute;
+				top: 15px;
+				right: 5px;
+				padding: 5px;
+				transform: translateY(-50%);
+				cursor: pointer;
+				&:hover {
+					color: #e81123;
+				}
+			}
+			&-show {
+				padding: 10px;
+				cursor: pointer;
+				&:hover {
+					color: #409EFF;
+				}
+			}
+			&-bar {
+				position: static;
+				width: 400px;
+				padding-top: 30px;
+				border: none;
+				box-shadow: none;
+			}
+			&-item {
+				width: 100%;
+			}
+		}
+	}
+</style>

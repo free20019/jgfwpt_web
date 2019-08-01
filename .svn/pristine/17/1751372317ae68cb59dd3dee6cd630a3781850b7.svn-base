@@ -1,0 +1,115 @@
+<!--行业平均运行情况-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.sTime" placeholder="开始时间"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.eTime" placeholder="结束时间"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="riqi" label="日期" min-width="160"></el-table-column>
+				<el-table-column label="单车平均营运收益" width="140">
+					<template slot-scope="scope">
+						<tw-unit :data="scope.row.dcpjyysy" unit="元"></tw-unit>
+					</template>
+				</el-table-column>
+				<el-table-column label="单车平均载客里程" width="140">
+					<template slot-scope="scope">
+						<tw-unit :data="scope.row.dcpjzklc" unit="公里"></tw-unit>
+					</template>
+				</el-table-column>
+				<el-table-column label="单车平均空驶里程" width="140">
+					<template slot-scope="scope">
+						<tw-unit :data="scope.row.dcpjkslc" unit="公里"></tw-unit>
+					</template>
+				</el-table-column>
+				<el-table-column prop="dcyypjcs" label="单车平均营运次数" width="140"></el-table-column>
+				<el-table-column label="单车平均载客时间" width="140">
+					<template slot-scope="scope">
+						<tw-unit :data="scope.row.dcpjzksj" unit="分钟"></tw-unit>
+					</template>
+				</el-table-column>
+				<el-table-column label="单车平均载客等候时间" width="150">
+					<template slot-scope="scope">
+						<tw-unit :data="scope.row.dcpjzkdhsj" unit="分钟"></tw-unit>
+					</template>
+				</el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "AverageIndustryPerformance",
+		data() {
+			return {
+				query: {
+					sTime: '',
+					eTime: ''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							riqi: '2019-02-25',
+							dcpjyysy: 612,
+							dcpjzklc: 311,
+							dcpjkslc: 143,
+							dcyypjcs: 19,
+							dcpjzksj: 168,
+							dcpjzkdhsj: 97
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.sTime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.eTime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			/*事件*/
+			handleQueryClick() {},
+			handleExportClick() {},
+		},
+		components: {
+			'tw-unit':TWUnit
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

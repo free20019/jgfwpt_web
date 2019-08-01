@@ -1,0 +1,151 @@
+<!--行业营运情况-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false" placeholder="请输入车牌号码"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.sTime" placeholder="开始时间"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.eTime" placeholder="结束时间"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="DAY" label="日期" min-width="160"></el-table-column>
+				<el-table-column prop="ZGS" label="公司" min-width="160"></el-table-column>
+				<el-table-column prop="CPHM" label="车辆数/辆" width="140"></el-table-column>
+				<el-table-column prop="TJCS" label="营运次数/次" width="140"></el-table-column>
+				<el-table-column prop="JINE" label="营运金额/元" width="140"></el-table-column>
+				<el-table-column prop="SZLC" label="营运里程/公里" width="140"></el-table-column>
+				<el-table-column prop="KSLC" label="空驶里程/公里" width="140"></el-table-column>
+				<el-table-column prop="YSSC" label="载客时间/分钟" width="140"></el-table-column>
+				<el-table-column prop="DHSJ" label="载客等候时间/分钟" width="140"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "IndustryOperation",
+		data() {
+			return {
+				query: {
+					vehicle: '',
+					companyName: '',
+					sTime: '',
+					eTime: ''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							riqi: '2019-02-25',
+							cls: 7658,
+							yycs: 92325,
+							yyje: 2930144,
+							yylc: 1311287,
+							kslc: 520075,
+							zksj: 1721246,
+							zkdhsj: 463293,
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.sTime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.eTime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getIndustryOperations();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber']),
+			...mapGetters(['getCompanyName']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			getIndustryOperations(){
+				this.table.loading = true;
+				const {vehicle, companyName, sTime, eTime} = this.query;
+				axios.get('industryOperation/getIndustryOperations', {
+					baseURL: this.baseURL,
+					params: {
+						vehiNo:vehicle,
+						companyName:companyName,
+						stime: sTime && moment(sTime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: eTime && moment(eTime).format('YYYY-MM-DD HH:mm:ss')
+					}
+				}).then(res => {
+					this.table.data = res.data || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.filter(this.getCompanyName, item => item.label.indexOf(query) > -1));
+			},
+			queryVehicleSearch(query, cb) {
+				if(query.legth < 3) cb = null;
+				else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getIndustryOperations();
+			},
+			handleExportClick() {
+				const {vehicle, companyName, sTime, eTime} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}industryOperation/getIndustryOperationsExcel?vehicle=${vehicle}&companyName=${companyName}&stime=${sTime && moment(sTime).format('YYYY-MM-DD HH:mm:ss')}&etime=${eTime && moment(eTime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {});
+			},
+		},
+		components: {
+			'tw-unit':TWUnit
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

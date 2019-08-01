@@ -1,0 +1,263 @@
+<!--主机故障-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.lPNumber"
+												 :fetch-suggestions="getLPNumberRemoteMethod" :trigger-on-focus="false"
+												 @select="handleLPNumberSelect" placeholder="请输入车牌号码"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker arrow-control type="datetime" v-model="query.time" placeholder="选择时间点"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<tree-select class="tw-tree-select tw-line" v-model="query.faultType" :multiple="true" :options="faultTypeOptions" placeholder="故障类型"/>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleAlarmIssuedClick">告警下发</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterVehicleList" v-loading="table.loading" border size="small" height="calc(100% - 32px)" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" min-width="180"></el-table-column>
+				<el-table-column prop="qy" label="企业" width="240"></el-table-column>
+				<el-table-column prop="zjwtx" label="主机无通讯" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.zjwtx" :system-fault="scope.row.zjwtxxt" type="主机无通讯" @true-review-click="handleAuditPassTrueReviewClick(scope.row,1,1)" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="dwyc" label="定位异常" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.dwyc" :system-fault="scope.row.dwycxt" type="定位异常"  @true-review-click="handleAuditPassTrueReviewClick(scope.row,2,1)" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="kcyc" label="空车异常" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.kcyc" :system-fault="scope.row.kcycxt" type="空车异常" @true-review-click="handleAuditPassTrueReviewClick(scope.row,3,1)" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="jjbjyc" label="紧急报警异常" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.jjbjyc" :system-fault="scope.row.jjbjycxt" type="紧急报警异常" @true-review-click="handleAuditPassTrueReviewClick(scope.row,4,1)" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+				<el-table-column prop="jjqyc" label="计价器异常" width="180">
+					<template slot-scope="scope">
+						<fault-review :item="scope.row" :fault="scope.row.jjqyc" :system-fault="scope.row.jjqycxt" type="计价器异常" @true-review-click="handleAuditPassTrueReviewClick(scope.row,5,1)" @false-review-click=""></fault-review>
+					</template>
+				</el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import TreeSelect from '@riophae/vue-treeselect'
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import FaultReview from '../../components/TableColumn/FaultReview'
+
+	export default {
+		name: "HostFailure",
+		data() {
+			return {
+				query: {
+					lPNumber: '',
+					time: '',
+					faultType: []
+				},
+				vehicle:[],
+				lpNumberLoading: false,
+				lpNumberOption: [],
+				faultTypeOptions: [
+					{id: '1', label: '主机无通讯'},
+					{id: '2', label: '定位异常'},
+					{id: '3', label: '空重车异常'},
+					{id: '4', label: '紧急报警异常'},
+					{id: '5', label: '计价器异常'}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							cphm: '123',
+							qy:'',
+							zjwtxxt: 1,
+							zjwtx: 0,
+							dwycxt: 0,
+							dwyc: 0,
+							kcycxt: 0,
+							kcyc: 0,
+							jjbjycxt: 1,
+							jjbjyc: 2,
+							jjqycxt: 1,
+							jjqyc: 1
+						},
+						{
+							cphm: '234',
+							qy:'',
+							zjwtxxt: 1,
+							zjwtx: 1,
+							dwycxt: 1,
+							dwyc: 1,
+							kcycxt: 0,
+							kcyc: 0,
+							jjbjycxt: 1,
+							jjbjyc: 2,
+							jjqycxt: 1,
+							jjqyc: 1
+						},
+						{
+							cphm: '345',
+							qy:'',
+							zjwtxxt: 1,
+							zjwtx: 2,
+							dwycxt: 0,
+							dwyc: 0,
+							kcycxt: 0,
+							kcyc: 0,
+							jjbjycxt: 1,
+							jjbjyc: 2,
+							jjqycxt: 1,
+							jjqyc: 1
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getVehicle();
+				this.getHostFailure();
+			});
+		},
+		computed: {
+			filterVehicleList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getVehicle : function(){
+				axios.get('/common/vehicle', {
+					baseURL: this.baseURL,
+					params: {
+					}
+				}).then(res => {
+					console.info(res.data);
+					this.vehicle= _.map(res.data, item=> {
+						return item.VEHICLE_NO
+					}) || [];
+				})
+					.catch(function (error) {
+						console.log(error);
+					});
+			},
+			getLPNumberRemoteMethod(query, cd) {
+				if (query.length < 3) cd(null);
+				else {
+					setTimeout(() => {
+						cd(_.map(_.filter(this.vehicle, item => item.indexOf(query) > -1), item => {
+							return {label: item, value: item}
+						}))
+					}, 200);
+				}
+			},
+			getHostFailure() {
+				const {lPNumber, time, faultType} = this.query;
+				console.info('getHostFailure:', moment(time).format('YYYY-MM-DD HH:mm:ss'))
+				axios.get('/terminal/hostfailure', {
+					baseURL: this.baseURL,
+					params: {
+						lPNumber,
+						time: time && moment(time).format('YYYY-MM-DD HH:mm:ss'),
+						faultType: faultType.toString().replace(/,/g, '')
+					}
+				}).then(res => {
+					console.info(res.data);
+					this.table.data = _.map(res.data, item => {
+						return {
+							cphm: item.VEHICLE_NO,
+							qy: item.COMP_NAME,
+							time: item.DB_TIME,
+							zjwtxxt: parseInt(item.HOST_NO_COMMUNICATION),
+							zjwtx: 2,
+							dwycxt: parseInt(item.GPS_INACCURATE) || parseInt(item.NO_GPS),
+							dwyc: parseInt(item.GPS_INACCURATE_SH === '' ? '0' : item.GPS_INACCURATE_SH),
+							kcycxt: parseInt(item.EMPTY_HEAVY),
+							kcyc: parseInt(item.EMPTY_HEAVY_SH === '' ? '0' : item.EMPTY_HEAVY_SH),
+							jjbjycxt: parseInt(item.EMERGENCY_ALARM),
+							jjbjyc: 3,
+							jjqycxt: parseInt(item.JJQ_ALARM),
+							jjqyc: parseInt(item.JJQ_ALARM_SH === '' ? '0' : item.JJQ_ALARM_SH)
+						}
+					});
+					this.table.total = this.table.data.length;
+					this.table.currentPage = 1;
+					this.table.loading = false;
+				}).catch(function (error) {
+					console.log(error);
+				});
+			},
+			getAudit(vehicle, time, type, review) {
+				axios.get('/terminal/audit', {
+					baseURL: this.baseURL,
+					params: {vehicle, time, type, sh:review}
+				}).then(res => {
+					if(res.data>0){
+						this.$message({message: "审核成功!", type: 'success'});
+						this.getHostFailure();
+					}else{
+						this.$message.error('审核失败！');
+					}
+				}).catch(function (error) {
+					console.error(error);
+				});
+			},
+			/*事件*/
+			handleLPNumberSelect(item) {},
+			handleQueryClick() {
+				this.getHostFailure();
+			},
+			handleAuditPassTrueReviewClick(item,type,sh) {
+				this.getAudit(item.cphm, item.time, type, sh);
+			},
+			handleAlarmIssuedClick() {},
+			handleExportClick() {
+				const {lPNumber, time, faultType} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}/terminal/hostfailuredc?lPNumber=${lPNumber}&time=${time && moment(time).format('YYYY-MM-DD HH:mm:ss')}&faultType=${faultType.toString().replace(/,/g, '')}`);
+				}).catch(() => {});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tree-select': TreeSelect,
+			FaultReview
+		}
+	}
+</script>
+
+<style scoped>
+</style>

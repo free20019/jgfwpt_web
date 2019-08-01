@@ -1,0 +1,14 @@
+<!--视频异常-->
+<template>
+	
+</template>
+
+<script>
+	export default {
+		name: "VideoAnomaly"
+	}
+</script>
+
+<style scoped>
+
+</style>

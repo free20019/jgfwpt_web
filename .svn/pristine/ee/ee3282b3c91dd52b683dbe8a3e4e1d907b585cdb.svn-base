@@ -1,0 +1,14 @@
+<!--维修管理平台使用情况分析-->
+<template>
+
+</template>
+
+<script>
+    export default {
+        name: "MaintenanceManagement"
+    }
+</script>
+
+<style scoped>
+
+</style>

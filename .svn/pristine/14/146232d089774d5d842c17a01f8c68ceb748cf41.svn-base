@@ -1,0 +1,182 @@
+<!--抓拍数据查询-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.timePeriod" placeholder="时间段" @change="handleTimePeriodChange">
+					<el-option v-for="item in timePeriodOption" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" :type="dateType" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" :type="dateType" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<tree-select class="tw-tree-select tw-line" v-model="query.depot" :multiple="true" :options="depotOptions" placeholder="场站"/>
+			</el-form-item>
+			<el-form-item>
+				<el-checkbox v-model="query.type">一分钟无重复</el-checkbox>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" min-width="280"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" min-width="140"></el-table-column>
+				<el-table-column prop="chzh" label="场站" min-width="280"></el-table-column>
+				<el-table-column prop="shji" label="时间" width="160"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import TreeSelect from '@riophae/vue-treeselect'
+	import TWUnit from '../../components/TWTableColumn/TWUnit'
+	import {formatCustomizeDate, formatDate} from '../../assets/js/util'
+
+	export default {
+		name: "CaptureDataQuery",
+		data() {
+			return {
+				query: {
+					vehicle: '',
+					companyName: '',
+					timePeriod: 0,
+					stime: '',
+					etime: '',
+					type: false,
+					depot: []
+				},
+				dateType: 'datetime',
+				timePeriodOption: [
+					{label: '自定义时间', value: 0},
+					{label: '全天', value: 1},
+					{label: '23:00~2:00', value: 2}
+				],
+				depotOptions: [
+					{id: '1', label: '三墩'},
+					{id: '2', label: '九堡客运中心'},
+					{id: '3', label: '城站火车站'},
+					{id: '4', label: '机场'},
+					{id: '5', label: '汽车西站'},
+					{id: '6', label: '火车东站北通道'},
+					{id: '7', label: '火车东站南通道'}
+				],
+				table: {
+					loading: false,
+					data: [
+						{
+							gsmc: '杭州笕桥汽车运输公司',
+							cphm: '浙ATB633',
+							chzh: '城站火车站',
+							shji: '2019-03-06 10:20:30'
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			queryVehicleSearch(query, cb) {
+				cb(_.map(_.filter(['浙A04222', '浙A04238',
+					'浙A12112', '浙A13222', '浙A13238', '浙A13276',
+					'浙A23221', '浙A23222', '浙A23223',
+					'浙A32221', '浙A32244',
+					'浙A40322', '浙A40612', '浙A41132', '浙A42402',
+					'浙A51222', '浙A51382', '浙A51580',
+					'浙A61222', '浙A62222', '浙A63522', '浙A66002', '浙A68000',
+					'浙A72222', '浙A72382', '浙A76884',
+					'浙A80432', '浙A80662', '浙A83332', '浙A86622',
+					'浙A92222', '浙A93512', '浙A96622'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(['三全鲜食（北新泾店）', 'Hot honey 首尔炸鸡（仙霞路）', '新旺角茶餐厅',
+					'泷千家(天山西路店)', '胖仙女纸杯蛋糕（上海凌空店）', '贡茶', '豪大大香鸡排超级奶爸',
+					'茶芝兰（奶茶，手抓饼）', '十二泷町', '星移浓缩咖啡', '阿姨奶茶/豪大大', '新麦甜四季甜品炸鸡',
+					'Monica摩托主题咖啡店', '浮生若茶（凌空soho店）', 'NONO JUICE  鲜榨果汁', 'CoCo都可(北新泾店）',
+					'快乐柠檬（神州智慧店）', 'Merci Paul cafe', '猫山王（西郊百联店）', '枪会山', '纵食', '钱记',
+					'壹杯加', '唦哇嘀咖', '爱茜茜里(西郊百联)', '爱茜茜里(近铁广场)', '鲜果榨汁', '开心丽果',
+					'超级鸡车', '妙生活果园', '香宜度麻辣香锅', '凡仔汉堡', '港式小铺', '蜀香源麻辣香锅',
+					'北京饺子馆', '饭典', '焦耳', '动力鸡车', '浏阳蒸菜', '四海游龙', '樱花食堂',
+					'壹分米客家传统调制米粉', '福荣祥烧腊', '速记黄焖鸡米饭', '红辣椒麻辣烫', '(小杨生煎)西郊百联餐厅',
+					'阳阳麻辣烫', '南拳妈妈龙虾盖浇饭'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			/*事件*/
+			handleTimePeriodChange() {
+				switch (this.query.timePeriod) {
+					case 0:
+						this.dateType = 'datetime';
+						this.query.stime = formatCustomizeDate(this.query.stime, 'YYYY-MM-DD 00:00:00');
+						this.query.etime = formatCustomizeDate(this.query.etime, 'YYYY-MM-DD 23:59:59');
+						break;
+					case 1:
+						this.dateType = 'date';
+						this.query.stime = formatDate(this.query.stime);
+						this.query.etime = formatDate(this.query.etime);
+						break;
+					case 2:
+						this.dateType = 'date';
+						this.query.stime = formatDate(moment(this.query.stime).subtract(1, 'days'));
+						this.query.etime = formatDate(this.query.etime);
+						break;
+				}
+			},
+			handleQueryClick() {},
+			handleExportClick() {},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		},
+		components: {
+			'tree-select': TreeSelect,
+			'tw-unit': TWUnit
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-query-panel {
+		height: calc(100% - 53px);
+	}
+</style>

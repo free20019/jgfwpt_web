@@ -1,0 +1,61 @@
+<template>
+	<div class="tw-menu-item" :class="{active: hasActive(data)}">
+		<router-link tag="div" class="tw-menu-link" :to="data.href"><tw-icon :icon="data.icon"></tw-icon>{{data.title}}</router-link>
+	</div>
+</template>
+
+<script>
+	import TWIcon from '../TWIcon'
+
+	export default {
+		name: "TWMenuItem",
+		props: {
+			data: Object,
+			active: String,
+			open: {}
+		},
+		methods: {
+			hasActive(item) {
+				const active = this.active;
+				const openItem = this.open;
+				return active === item.href && (Object.prototype.toString.call(openItem).indexOf('Object') === -1 || active.indexOf(openItem.fullPath) === -1);
+				// return Object.prototype.toString.call(openItem).indexOf('Object') === -1 ? active === item.href : active.indexOf(openItem.fullPath) === 0;
+			}
+		},
+		components: {
+			'tw-icon': TWIcon
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-menu {
+		&-item {
+			 height: 40px;
+			 font-size: 16px;
+			 line-height: 40px;
+			 cursor: pointer;
+
+			 &:hover {
+				 color: #ffffff;
+				 background-color: #4d89ab;
+				 background-color: rgba(255, 255, 255, .2);
+			 }
+
+			 &.active {
+				 color: #ffffff;
+				 background-color: #336e90;
+				 background-color: rgba(0, 0, 0, 0.2);
+			 }
+		 }
+
+		&-link {
+			padding-left: 10px;
+			padding-right: 10px;
+		}
+	}
+	.tw-icon {
+		width: 40px;
+		text-align: center;
+	}
+</style>

@@ -1,0 +1,246 @@
+<!--驾驶员信息-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-input v-model="query.name" placeholder="姓名"></el-input>
+			</el-form-item>
+			<el-form-item>
+				<el-input v-model="query.idCard" placeholder="身份证号"></el-input>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.region" placeholder="区域">
+					<el-option v-for="item in getRegion" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="CERTIFICATE_NUMBER" label="身份证号" width="160"></el-table-column>
+				<el-table-column prop="NAME" label="姓名" width="140"></el-table-column>
+				<el-table-column prop="COMPANY_NAME" label="公司名称" min-width="280"></el-table-column>
+				<el-table-column prop="COMPANY_LICENSE_NUMBER" label="营运许可证号" width="140"></el-table-column>
+				<el-table-column prop="VEHICLE_ID" label="服务证号" width="160"></el-table-column>
+				<el-table-column prop="PLATE_NUMBER" label="车牌号码" width="120"></el-table-column>
+				<el-table-column prop="ZGZYXQZ" label="资格证有效期止" width="120"></el-table-column>
+				<el-table-column prop="ASSESS_SCORE" label="分值" width="100"></el-table-column>
+				<el-table-column prop="STATUS_NAME" label="证照状态" width="120"></el-table-column>
+				<el-table-column label="操作" width="100" :resizable="false">
+					<template slot-scope="scope">
+						<el-button class="tw-table-button" type="text" size="mini" icon="iconfont icon-search" @click="handleDetailsClick(scope.row)"></el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+		<el-dialog class="tw-dialog" :title="dialog.title" :visible.sync="dialog.display" width="960">
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">人员基本信息</div>
+				<el-form :inline="true" :model="dialog.personnelInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="姓名：">{{dialog.personnelInfo.NAME}}</el-form-item>
+					<el-form-item class="tw-query-item" label="身份证号：">{{dialog.personnelInfo.CERTIFICATE_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="驾龄：">{{dialog.personnelInfo.DRIVER_AGE}}</el-form-item>
+					<el-form-item class="tw-query-item" label="IC卡号：">{{dialog.personnelInfo.IC_NO}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__2" label="所在地市：">{{dialog.personnelInfo.AREA_NAME}}</el-form-item>
+					<el-form-item class="tw-query-item tw-query-item__2" label="公司名称：">{{dialog.personnelInfo.COMPANY_NAME}}</el-form-item>
+				</el-form>
+			</el-card>
+			<el-card class="box-card" style="margin-bottom: 10px;">
+				<div slot="header">证件基本信息</div>
+				<el-form :inline="true" :model="dialog.vehicleInfo" size="small" class="tw-query-bar" label-width="8em">
+					<el-form-item class="tw-query-item" label="车牌号码：">{{dialog.documentInfo.PLATE_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="资格证号：">{{dialog.documentInfo.CERTIFICATE_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效期起：">{{dialog.documentInfo.ZGZYXQQ}}</el-form-item>
+					<el-form-item class="tw-query-item" label="有效期止：">{{dialog.documentInfo.ZGZYXQZ}}</el-form-item>
+					<el-form-item class="tw-query-item" label="证件编号：">{{dialog.documentInfo.SERIAL_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="补换证次数：">{{dialog.documentInfo.REPLACEMENT_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="经营许可证：">{{dialog.documentInfo.COMPANY_LICENSE_NUMBER}}</el-form-item>
+					<el-form-item class="tw-query-item" label="上岗有效期起：">{{dialog.documentInfo.SGYXQQ}}</el-form-item>
+					<el-form-item class="tw-query-item" label="上岗有效期止：">{{dialog.documentInfo.SGYXQZ}}</el-form-item>
+					<el-form-item class="tw-query-item" label="服务监督卡：">{{dialog.documentInfo.SERVER_CARD_NUM}}</el-form-item>
+					<el-form-item class="tw-query-item" label="培训次数：">{{dialog.documentInfo.TRAIN_NUMBER}}</el-form-item>
+				</el-form>
+			</el-card>
+			<div slot="footer" class="dialog-footer">
+				<el-button @click="dialog.display = false">取 消</el-button>
+				<el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+			</div>
+		</el-dialog>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "DriverInfo",
+		data() {
+			return {
+				query: {
+					vehicle: '',
+					name: '',
+					idCard: '',
+					region: ''
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				},
+				dialog: {
+					title: '详情',
+					display: false,
+					personnelInfo: {
+						gsmc: '',
+						jszh: '',
+						jial: '',
+						szds: '',
+						ickh: '',
+						gsmc: ''
+					},
+					documentInfo: {
+						cphm: '',
+						zgzh: '',
+						yxqq: '',
+						yxqz: '',
+						zjbh: '',
+						bhzcs: '',
+						jyxkz: '',
+						sgyxqq: '',
+						sgyxqz: '',
+						fwjdk: '',
+						fwyxqq: '',
+						fwyxqz: '',
+						bxcs: ''
+					}
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+				this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+				this.getDriverInformation();
+			});
+		},
+		computed: {
+			...mapGetters(['getLPNumber', 'getRegion']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getDriverInformation(){
+				this.table.loading = true;
+				const {vehicle, name, idCard,region} = this.query;
+				axios.get('transportationDataAccess/getDriverInformation', {
+					baseURL: this.baseURL,
+					params: {
+						vehiNo:vehicle,
+						name:name,
+						idNumber: idCard,
+						areaName: region
+					}
+				}).then(res => {
+					console.info(res.data.datas);
+					this.table.data = res.data.datas || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			queryVehicleSearch(query, cb) {
+				if(query.legth < 3) cb = null;
+				else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getDriverInformation();
+			},
+			handleExportClick() {
+				const {vehicle, name, idCard,region} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}transportationDataAccess/getDriverInformationExcel?vehicle=${vehicle}&name=${name}&idCard=${idCard}&region=${region}`);
+				}).catch(() => {
+				});
+			},
+			handleDetailsClick(item) {
+				console.info('handleDetailsClick:', item)
+				this.dialog.display = true;
+				this.dialog.personnelInfo = {
+					NAME: item.NAME,
+					CERTIFICATE_NUMBER: item.CERTIFICATE_NUMBER,
+					DRIVER_AGE: item.DRIVER_AGE,
+					IC_NO: item.IC_NO,
+					AREA_NAME: item.AREA_NAME,
+					COMPANY_NAME: item.COMPANY_NAME
+				};
+				this.dialog.documentInfo = {
+					PLATE_NUMBER: item.PLATE_NUMBER,
+					CERTIFICATE_NUMBER: item.CERTIFICATE_NUMBER,
+					ZGZYXQQ: item.ZGZYXQQ,
+					ZGZYXQZ: item.ZGZYXQZ,
+					SERIAL_NUMBER: item.SERIAL_NUMBER,
+					REPLACEMENT_NUMBER: item.REPLACEMENT_NUMBER,
+					COMPANY_LICENSE_NUMBER: item.COMPANY_LICENSE_NUMBER,
+					SGYXQQ: item.SGYXQQ,
+					SGYXQZ: item.SGYXQZ,
+					SERVER_CARD_NUM: item.SERVER_CARD_NUM,
+					ZGZYXQQ: item.ZGZYXQQ,
+					ZGZYXQZ: item.ZGZYXQZ,
+					TRAIN_NUMBER: item.TRAIN_NUMBER
+				};
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style lang="scss" scoped>
+	.tw-query {
+		&-bar {
+			border-bottom: none;
+		}
+		&-item {
+			width: 33.333333%;
+			margin-right: 0;
+			padding-right: 10px;
+			box-sizing: border-box;
+		}
+		&-item__2 {
+			width: 66.666666%;
+		}
+		&-item__3 {
+			width: 100%;
+		}
+	}
+</style>

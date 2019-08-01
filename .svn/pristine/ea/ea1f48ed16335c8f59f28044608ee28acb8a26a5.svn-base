@@ -1,0 +1,14 @@
+<!--运力需求热点-->
+<template>
+	<div class="te-template-wrapper">运力需求热点</div>
+</template>
+
+<script>
+	export default {
+		name: "CapacityDemandHotsPot"
+	}
+</script>
+
+<style scoped>
+
+</style>

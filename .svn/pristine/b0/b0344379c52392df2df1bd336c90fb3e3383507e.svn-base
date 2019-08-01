@@ -1,0 +1,91 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+import Home from './views/Home.vue'
+
+Vue.use(Router)
+
+export default new Router({
+  base: process.env.BASE_URL,
+  routes: [
+    {
+      path: '/',
+      name: 'index',
+			redirect: '/zdfx/zjgz',
+      component: () => import('./views/Index.vue'),
+			children: [
+				/*终端分析统计*/
+				{
+					path: '/zdfx/zjgz',
+					name: 'HostFailure',
+					component: () => import('./views/terminalAnalysis/HostFailure.vue')
+				},
+				{
+					path: '/zdfx/zdyc',
+					name: 'TerminalAbnormalAlarm',
+					component: () => import('./views/terminalAnalysis/TerminalAbnormalAlarm.vue')
+				},
+				{
+					path: '/zdfx/spyc',
+					name: 'VideoAnomaly',
+					component: () => import('./views/terminalAnalysis/VideoAnomaly.vue')
+				},
+				{
+					path: '/zdfx/jifen',
+					name: 'integral',
+					component: () => import('./components/HelloWorld.vue')
+				},
+				/*企业函件管理*/
+				{
+					path: '/qyhj/btgl',
+					name: 'hotLineLog',
+					component: () => import('./views/enterpriseLetters/ReportManage.vue'),
+				},
+				/*工单管理统计*/
+				/*维护管理统计*/
+				/*运力调度管理*/
+				/*服务平台使用情况*/
+				/*行业运行情况*/
+				/*运政数据接入*/
+				/*支付服务*/
+				{
+					path: '/oaxt/ceshi/ceshi1',
+					name: 'ceshi1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi2',
+					name: 'ceshi2',
+					component: () => import('./components/HelloWorld.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi3-1',
+					name: 'ceshi3-1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/ceshi/ceshi3-2',
+					name: 'ceshi3-2',
+					component: () => import('./components/HelloWorld.vue'),
+				},
+				{
+					path: '/oaxt/gycs/gycs1',
+					name: 'ceshi1',
+					component: () => import('./views/Test.vue'),
+				},
+				{
+					path: '/oaxt/gycs/gycs2',
+					name: 'ceshi2',
+					component: () => import('./components/HelloWorld.vue'),
+				}
+			]
+    },
+    {
+      path: '/about',
+      name: 'about',
+      // route level code-splitting
+      // this generates a separate chunk (about.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
+    }
+  ]
+})

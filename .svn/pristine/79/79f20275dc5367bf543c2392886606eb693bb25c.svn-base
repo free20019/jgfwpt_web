@@ -1,0 +1,95 @@
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"
+												 @select="handleCompanyNameSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="table.data" v-loading="table.loading" border size="small" height="100%" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" min-width="140"></el-table-column>
+				<el-table-column prop="simk" label="SIM卡号" width="140"></el-table-column>
+				<el-table-column prop="zdlx" label="终端类型" width="120"></el-table-column>
+				<el-table-column prop="zdzlx" label="终端子类型" width="120"></el-table-column>
+				<el-table-column prop="lxr" label="联系人" width="120"></el-table-column>
+				<el-table-column prop="lxdh" label="联系电话" width="140"></el-table-column>
+				<el-table-column prop="zhsxsj" label="最后上线时间" width="160"></el-table-column>
+			</el-table>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+
+	export default {
+		name: "UnlistedVehicleInquiry",
+		data() {
+			return {
+				query:{
+					companyName: '',
+					stime: '',
+					etime:''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							gsmc: '杭州长运三运运输有限公司',
+							cphm: '浙A04222',
+							simk: '15824438526',
+							zdlx: '华强GPRS',
+							zdzlx: '华强VD10',
+							lxr: '侯师彪',
+							lxdh: '15925681718',
+							zhsxsj: '2019-02-17 14:34:14'
+						}
+					]
+				}
+			}
+		},
+		methods: {
+			/*接口*/
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(['三全鲜食（北新泾店）', 'Hot honey 首尔炸鸡（仙霞路）', '新旺角茶餐厅',
+					'泷千家(天山西路店)', '胖仙女纸杯蛋糕（上海凌空店）', '贡茶', '豪大大香鸡排超级奶爸',
+					'茶芝兰（奶茶，手抓饼）', '十二泷町', '星移浓缩咖啡', '阿姨奶茶/豪大大', '新麦甜四季甜品炸鸡',
+					'Monica摩托主题咖啡店', '浮生若茶（凌空soho店）', 'NONO JUICE  鲜榨果汁', 'CoCo都可(北新泾店）',
+					'快乐柠檬（神州智慧店）', 'Merci Paul cafe', '猫山王（西郊百联店）', '枪会山', '纵食', '钱记',
+					'壹杯加', '唦哇嘀咖', '爱茜茜里(西郊百联)', '爱茜茜里(近铁广场)', '鲜果榨汁', '开心丽果',
+					'超级鸡车', '妙生活果园', '香宜度麻辣香锅', '凡仔汉堡', '港式小铺', '蜀香源麻辣香锅',
+					'北京饺子馆', '饭典', '焦耳', '动力鸡车', '浏阳蒸菜', '四海游龙', '樱花食堂',
+					'壹分米客家传统调制米粉', '福荣祥烧腊', '速记黄焖鸡米饭', '红辣椒麻辣烫', '(小杨生煎)西郊百联餐厅',
+					'阳阳麻辣烫', '南拳妈妈龙虾盖浇饭'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			/*事件*/
+			handleCompanyNameSelect(item) {},
+			handleQueryClick() {},
+			handleExportClick() {}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

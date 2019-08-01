@@ -1,0 +1,220 @@
+<!--未上线车辆查询-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+					<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+													 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"
+													 @select="handleVehicleSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"
+												 @select="handleCompanyNameSelect"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-select v-model="query.timeType" placeholder="请选择" @change="handleTimeTypeChange">
+					<el-option v-for="item in timeTypeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+				</el-select>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.stime" type="datetime" :disabled="timeControl" placeholder="开始日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+				<el-date-picker v-model="query.etime" type="datetime" :disabled="timeControl" placeholder="结束日期"></el-date-picker>
+			</el-form-item>
+			<el-form-item>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterUnlistedVehicleList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" min-width="140"></el-table-column>
+				<el-table-column prop="simk" label="SIM卡号" width="140"></el-table-column>
+				<el-table-column prop="zdlx" label="终端类型" width="120"></el-table-column>
+				<el-table-column prop="zdzlx" label="终端子类型" width="120"></el-table-column>
+				<el-table-column prop="lxr" label="联系人" width="120"></el-table-column>
+				<el-table-column prop="lxdh" label="联系电话" width="140"></el-table-column>
+				<el-table-column prop="zhsxsj" label="最后上线时间" width="160"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+
+	export default {
+		name: "UnlistedVehicleInquiry",
+		data() {
+			return {
+				vehicle:[],
+				company: [],
+				query:{
+					vehicle: '',
+					companyName: '',
+					timeType: 0,
+					stime: '',
+					etime:''
+				},
+				timeControl: false,
+				timeTypeOptions: [
+					{label: '自定义时间', value: 0},
+					{label: '3天时间', value: 1},
+					{label: '7天时间', value: 2}
+				],
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.query.stime = moment(moment().format('YYYY-MM-DD 00:00:00'));
+				this.query.etime = moment(moment().format('YYYY-MM-DD 23:59:59'));
+				this.getCompany();
+				this.getVehicle();
+				this.getNotOnline();
+			});
+		},
+		computed: {
+			filterUnlistedVehicleList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			getVehicle : function(){
+				axios.get('/common/vehicle', {
+					baseURL: this.baseURL,
+					params: {
+					}
+				}).then(res => {
+					console.info(res.data);
+					this.vehicle= _.map(res.data, item=> {
+						return item.VEHICLE_NO
+					}) || [];
+				})
+				.catch(function (error) {
+					console.log(error);
+				});
+			},
+			getCompany() {
+				axios.get('/common/company', {
+					baseURL: this.baseURL,
+					params: {}
+				}).then(res => {
+					console.info(res.data);
+					this.company = _.map(res.data, item => {
+						return item.COMP_NAME
+					}) || [];
+				})
+						.catch(function (error) {
+							console.log(error);
+						});
+			},
+			/*接口*/
+			queryVehicleSearch(query, cb) {
+				cb(_.map(_.filter(this.vehicle, item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.map(_.filter(this.company, item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			getNotOnline(){
+				const {vehicle, companyName, stime, etime} = this.query;
+				this.table.loading = true;
+				axios.get('/terminal/notonline', {
+					baseURL: this.baseURL,
+					params: {
+						vehicle,
+						companyName,
+						stime: stime&&moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+						etime: etime&&moment(etime).format('YYYY-MM-DD HH:mm:ss')
+					}
+				}).then(res => {
+					console.info(res.data);
+					this.table.data = _.map(res.data, item => {
+						return {
+							gsmc: item.COMP_NAME,
+							cphm: item.VEHI_NO,
+							simk: item.VEHI_SIM,
+							zdlx: item.MT_NAME,
+							zdzlx: item.MDT_SUB_TYPE,
+							lxr:  item.OWN_NAME,
+							lxdh: item.HOME_TEL,
+							zhsxsj: item.TIME}
+					});
+					this.table.total = this.table.data.length;
+					this.table.currentPage = 1;
+					this.table.loading = false;
+				})
+						.catch(function (error) {
+							console.log(error);
+						});
+			},
+			/*事件*/
+			handleVehicleSelect(item) {},
+			handleCompanyNameSelect(item) {},
+			handleTimeTypeChange() {
+				switch (this.query.timeType) {
+					case 0:
+						this.timeControl = false;
+						break;
+					case 1:
+						this.timeControl = true;
+						this.query.stime = moment(moment().subtract(3, 'days').format('YYYY-MM-DD 00:00:00'));
+						this.query.etime = moment(moment().format('YYYY-MM-DD 23:59:59'));
+						break;
+					case 2:
+						this.timeControl = true;
+						this.query.stime = moment(moment().subtract(7, 'days').format('YYYY-MM-DD 00:00:00'));
+						this.query.etime = moment(moment().format('YYYY-MM-DD 23:59:59'));
+						break;
+				}
+			},
+			handleQueryClick() {
+				this.getNotOnline();
+			},
+			handleExportClick() {
+				const {vehicle, companyName, stime, etime} = this.query;
+				this.$confirm('是否需要导出?', '提示', {
+					confirmButtonText: '是',
+					cancelButtonText: '否',
+					cancelButtonClass: 'el-button--danger',
+					closeOnClickModal: false,
+					type: 'info',
+					center: true
+				}).then(() => {
+					window.open(`${this.baseURL}/terminal/notonlinedc?vehicle=${vehicle}&companyName=${companyName}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+				}).catch(() => {});
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>

@@ -1,0 +1,110 @@
+<!--安装情况统计-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+												 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel" style="height: calc(100% - 54px);">
+			<el-table :data="table1.data" v-loading="table1.loading" border size="small" height="81px" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column prop="COUNT1" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="COUNT2" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="COUNT3" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="RATE" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+			<hr class="tw-horizontal-rule">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 143px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column prop="COMP_NAME" label="企业名称" width="300"></el-table-column>
+				<el-table-column prop="COUNT1" label="车辆总数" width="120"></el-table-column>
+				<el-table-column prop="COUNT2" label="已安装数" width="120"></el-table-column>
+				<el-table-column prop="COUNT3" label="未安装数" width="120"></el-table-column>
+				<el-table-column prop="RATE" label="安装占比" min-width="200"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {mapGetters} from 'vuex'
+
+	export default {
+		name: "InstallationStatistics",
+		data() {
+			return {
+				query: {
+					companyName: ''
+				},
+				table1: {
+					loading: false,
+					data: []
+				},
+				table: {
+					loading: false,
+					data: [],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+				this.getInstallationStatistics();
+			});
+		},
+		computed: {
+			...mapGetters(['getCompanyRealName']),
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*接口*/
+			getInstallationStatistics(){
+				this.table.loading = true;
+				const {companyName} = this.query;
+				axios.get('servicePlatformUsage/getInstallationStatistics', {
+					baseURL: this.baseURL,
+					params: {
+						companyName:companyName
+					}
+				}).then(res => {
+					this.table1.data = res.data.list || [];
+					this.table.data = res.data.list1 || [];
+					this.table.currentPage = 1;
+					this.table.total = this.table.data.length;
+					this.table.loading = false;
+				})
+			},
+			queryCompanyNameSearch(query, cb) {
+				cb(_.filter(this.getCompanyRealName, item => item.label.indexOf(query) > -1));
+			},
+			/*事件*/
+			handleQueryClick() {
+				this.getInstallationStatistics();
+			},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+	.tw-query-panel {
+		height: 100%;
+	}
+</style>

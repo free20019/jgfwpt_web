@@ -1,0 +1,101 @@
+<!--交班信息-->
+<template>
+	<div class="tw-template-wrapper">
+		<el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+			<el-form-item>
+				<el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+												 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+			</el-form-item>
+			<el-form-item>
+				<el-button type="primary" @click="handleQueryClick">查询</el-button>
+				<el-button type="primary" @click="handleExportClick">导出</el-button>
+			</el-form-item>
+		</el-form>
+		<div class="tw-query-panel">
+			<el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+				<el-table-column type="index" label="序号" width="60"></el-table-column>
+				<el-table-column prop="cphm" label="车牌号码" width="140"></el-table-column>
+				<el-table-column prop="gsmc" label="公司名称" width="280"></el-table-column>
+				<el-table-column prop="zgzh" label="服务资格证号" width="180"></el-table-column>
+				<el-table-column prop="jbsj" label="交班时间" width="160"></el-table-column>
+				<el-table-column prop="fanx" label="方向" width="100"></el-table-column>
+				<el-table-column prop="didi" label="地点" min-width="280"></el-table-column>
+			</el-table>
+			<el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next" @current-change="handleTablePageCurrentChange"></el-pagination>
+		</div>
+	</div>
+</template>
+
+<script>
+	import _ from 'underscore'
+	import axios from 'axios'
+	import moment from 'moment'
+	import {formatCustomizeDate, formatDateTime} from '../../assets/js/util'
+
+	export default {
+		name: "handoverInfo",
+		data() {
+			return {
+				query: {
+					vehicle: ''
+				},
+				table: {
+					loading: false,
+					data: [
+						{
+							cphm: '浙A12345',
+							gsmc: '杭州和谐出租汽车服务管理有限公司',
+							zgzh: '330101100096',
+							jbsj: '2016-01-12 10:30:00',
+							fanx: '东南方向',
+							didi: '杭州市下城区朝晖路184号'
+						}
+					],
+					pageSize: 20,
+					currentPage: 1,
+					total: 0
+				}
+			}
+		},
+		mounted() {
+			this.$nextTick(() => {
+			});
+		},
+		computed: {
+			filterTableList() {
+				const {data, pageSize, currentPage} = this.table;
+				const pageIndex = currentPage -1;
+				return _.filter(data, (item, index) => {
+					return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+				})
+			}
+		},
+		methods: {
+			/*数据接口*/
+			queryVehicleSearch(query, cb) {
+				cb(_.map(_.filter(['浙A04222', '浙A04238',
+					'浙A12112', '浙A13222', '浙A13238', '浙A13276',
+					'浙A23221', '浙A23222', '浙A23223',
+					'浙A32221', '浙A32244',
+					'浙A40322', '浙A40612', '浙A41132', '浙A42402',
+					'浙A51222', '浙A51382', '浙A51580',
+					'浙A61222', '浙A62222', '浙A63522', '浙A66002', '浙A68000',
+					'浙A72222', '浙A72382', '浙A76884',
+					'浙A80432', '浙A80662', '浙A83332', '浙A86622',
+					'浙A92222', '浙A93512', '浙A96622'], item => item.indexOf(query) > -1), item => {
+					return {label: item, value: item}
+				}));
+			},
+			/*事件*/
+			handleQueryClick() {},
+			handleExportClick() {},
+			handleTablePageCurrentChange(index) {
+				this.table.currentPage = index;
+			}
+		}
+	}
+</script>
+
+<style scoped>
+
+</style>
