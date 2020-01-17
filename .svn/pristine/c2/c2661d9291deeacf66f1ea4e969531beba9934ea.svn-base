@@ -1,0 +1,295 @@
+<!-- 异常处置过程添加处理 -->
+<template>
+  <div class="tw-template-wrapper">
+    <el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+      <el-form-item>
+        <el-input class="inline-input" v-model="query.title" placeholder="主题"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="handleQueryClick">查询</el-button>
+        <el-button type="primary" @click="handleAddClick">添加</el-button>
+      </el-form-item>
+    </el-form>
+    <div class="tw-query-panel">
+      <el-table
+        class="tw-table"
+        :data="table.data"
+        v-loading="table.loading"
+        border
+        size="small"
+        height="calc(100% - 42px)"
+      >
+        <el-table-column type="index" label="序号" width="60" align="center" :resizable="false"></el-table-column>
+        <el-table-column prop="VHIC" label="时间" width="140" align="center"></el-table-column>
+        <el-table-column
+          prop="UP_INTER"
+          label="主题"
+          min-width="180"
+          align="center"
+          show-overflow-tooltip
+        ></el-table-column>
+        <el-table-column prop="TOTAL_POINTS" label="报警人" width="100" align="center"></el-table-column>
+        <el-table-column prop="ACT_POINTS" label="报警人电话" width="140" align="center"></el-table-column>
+        <el-table-column prop="WZ_PERCENT" label="接警人" width="100" align="center"></el-table-column>
+        <el-table-column prop="LOST_TIMES" label="事件级别" width="100" align="center"></el-table-column>
+        <el-table-column prop="LOST_TIME" label="状态" width="100" align="center"></el-table-column>
+        <el-table-column prop="DB_TIME" label="操作" width="130" align="center">
+          <template v-slot="scope">
+            <el-button
+              type="text"
+              icon="el-icon-search"
+              size="small"
+              @click="handleDetailClick(scope.row)"
+            ></el-button>
+            <el-button
+              type="text"
+              icon="el-icon-edit"
+              size="small"
+              @click="handleEditClick(scope.row)"
+            ></el-button>
+            <el-button
+              type="text"
+              icon="el-icon-delete"
+              size="small"
+              @click="handleDeleteClick(scope.row)"
+            ></el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        class="tw-pagination"
+        background
+        :page-size="table.pageSize"
+        :current-page="table.currentPage"
+        :total="table.data.length"
+        layout="prev, pager, next,total"
+        @current-change="handleTablePageCurrentChange"
+      ></el-pagination>
+    </div>
+    <div class="tw-panel tw-panel-layout">
+      <div class="tw-panel tw-panel__left">
+        <div class="tw-panel__title">报警内容</div>
+        <div class="tw-panel__body">自己获取信息</div>
+      </div>
+      <div class="tw-panel__right">
+        <div class="tw-map" id="gaodeMap" v-loading="map.loading"></div>
+      </div>
+    </div>
+    <el-dialog
+      class="tw-dialog"
+      title="异常处理"
+      :visible.sync="dialog.display"
+      width="900px"
+      @closed="handleDialogClosed"
+    >
+      <div class="tw-panel tw-panel-layout">
+        <div class="tw-panel tw-panel__left">
+          <el-form :model="query" size="small" label-width="100px">
+            <el-form-item label="事件编号">
+              <el-input class="inline-input" v-model="query.title" placeholder="事件编号"></el-input>
+            </el-form-item>
+            <el-form-item label="事件主题">
+              <el-input class="inline-input" v-model="query.title" placeholder="事件主题"></el-input>
+            </el-form-item>
+            <el-form-item label="发生地址">
+              <el-input class="inline-input" v-model="query.title" placeholder="点击地图自动获取"></el-input>
+            </el-form-item>
+            <el-form-item label="经纬度">
+              <el-input class="inline-input" v-model="query.title" placeholder="经纬度"></el-input>
+            </el-form-item>
+            <el-form-item label="报警人">
+              <el-input class="inline-input" v-model="query.title" placeholder="报警人"></el-input>
+            </el-form-item>
+            <el-form-item label="报警人电话">
+              <el-input class="inline-input" v-model="query.title" placeholder="报警人电话"></el-input>
+            </el-form-item>
+            <el-form-item label="接警人">
+              <el-input class="inline-input" v-model="query.title" placeholder="接警人"></el-input>
+            </el-form-item>
+            <el-form-item label="事件级别">
+              <el-select class="inline-input" v-model="query.title" placeholder="事件级别">
+                <el-option value="0" label="一级"></el-option>
+                <el-option value="1" label="二级"></el-option>
+                <el-option value="2" label="三级"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="接警方式">
+              <el-select class="inline-input" v-model="query.title" placeholder="接警方式">
+                <el-option value="0" label="电话报警"></el-option>
+                <el-option value="0" label="短信报警"></el-option>
+                <el-option value="0" label="110联动"></el-option>
+                <el-option value="0" label="12328转入"></el-option>
+                <el-option value="0" label="12345转入"></el-option>
+                <el-option value="0" label="领导指定"></el-option>
+                <el-option value="0" label="相关部门指定"></el-option>
+                <el-option value="0" label="系统预警"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="接警内容">
+              <el-input class="inline-input" v-model="query.title" placeholder="接警内容"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div class="tw-map" id="gaodeMap_dialog"></div>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="dialogVisible = false">提 交</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'AbnormalDisposalProcess',
+  data() {
+    return {
+      query: {
+        title: ''
+      },
+      table: {
+        loading: false,
+        data: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
+        pageSize: 10,
+        currentPage: 1
+      },
+      map: {
+        amap: null,
+        amap2: null,
+        loading: false,
+        center: [120.170076, 30.277559]
+      },
+      dialog: {
+        display: false
+      }
+    }
+  },
+  mounted() {
+    this.$nextTick(() => {
+      setTimeout(() => {
+        this.initMap()
+      }, 300)
+    })
+  },
+  computed: {},
+  methods: {
+    handleQueryClick() {},
+    handleAddClick() {
+      this.dialog.display = true
+      setTimeout(() => {
+        this.initDialogMap()
+      }, 0)
+    },
+    handleDetailClick() {
+      this.dialog.display = true
+      setTimeout(() => {
+        this.initDialogMap()
+      }, 0)
+    },
+    handleEditClick() {
+      this.dialog.display = true
+      setTimeout(() => {
+        this.initDialogMap()
+      }, 0)
+    },
+    handleDeleteClick() {},
+    handleTablePageCurrentChange(index) {
+      this.table.currentPage = index
+    },
+    handleDialogClosed() {
+      // 清空数据 <============= 敲黑板了黄显乐 ===================================================================
+    },
+    initMap() {
+      this.map.amap = new AMap.Map('gaodeMap', {
+        center: this.map.center,
+        resizeEnable: true,
+        zoom: 13
+      })
+    },
+    initDialogMap() {
+      this.map.amap2 = new AMap.Map('gaodeMap_dialog', {
+        center: this.map.center,
+        resizeEnable: true,
+        zoom: 13
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+@import '../../assets/css/tongwoo-util';
+$bottomHeight: 330px;
+.tw-template-wrapper {
+  overflow: auto;
+}
+
+.tw-query-panel {
+  height: calc(100% - #{$bottomHeight} - 64px);
+  min-height: 300px;
+}
+
+.tw-panel {
+  $width: 500px;
+  &-layout {
+    height: $bottomHeight;
+    padding-left: 10px;
+    padding-right: 10px;
+
+    @include clearfix;
+  }
+
+  &__left,
+  &__right {
+    float: left;
+    box-sizing: border-box;
+  }
+
+  &__left {
+    width: $width;
+    height: 100%;
+    padding-right: 10px;
+  }
+
+  &__right {
+    width: calc(100% - #{$width});
+    height: 100%;
+  }
+
+  &__title {
+    padding: 10px;
+    border-bottom: 1px solid #eeeeee;
+    font-size: 16px;
+    font-weight: bold;
+    color: #113f67;
+  }
+  &__body {
+    padding: 10px;
+    text-indent: 2em;
+  }
+}
+.tw-dialog {
+  .tw-panel {
+    $width: 300px;
+    // position: relative;
+    height: auto;
+
+    &__left {
+      width: $width;
+    }
+
+    &__right {
+      width: calc(100% - #{$width});
+    }
+  }
+  .tw-map {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    width: calc(100% - 360px);
+    height: 440px;
+    transform: translateY(-50%);
+  }
+}
+</style>

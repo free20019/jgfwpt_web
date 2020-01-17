@@ -1,0 +1,151 @@
+<!--计价器异常营运分析-->
+<template>
+    <div class="tw-template-wrapper">
+        <el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+            <el-form-item>
+                <el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+                                 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+            </el-form-item>
+            <el-form-item>
+                <el-select v-model="query.area" placeholder="区域">
+                    <el-option v-for="item in getRegionReal" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-date-picker v-model="query.stime" type="datetime" placeholder="开始日期"></el-date-picker>
+            </el-form-item>
+            <el-form-item>
+                <el-date-picker v-model="query.etime" type="datetime" placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleQueryClick">查询</el-button>
+                <el-button type="primary" @click="handleExportClick">导出</el-button>
+            </el-form-item>
+        </el-form>
+        <div class="tw-query-panel">
+            <el-table :data="table.data" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+                <el-table-column type="index" label="序号" width="60" :resizable="false"></el-table-column>
+                <el-table-column prop="VHIC" label="车牌号" width="150"></el-table-column>
+                <el-table-column prop="AREA_NAME" label="区域" width="140"></el-table-column>
+                <el-table-column prop="COMPANY_NAME" label="公司" width="240"></el-table-column>
+                <el-table-column prop="S_TIME" label="开始时间" width="180"></el-table-column>
+                <el-table-column prop="E_TIME" label="结束时间" width="180"></el-table-column>
+                <el-table-column prop="J_MILE" label="计价器里程" width="150"></el-table-column>
+                <el-table-column prop="S_MILE" label="GPS里程" width="180"></el-table-column>
+                <el-table-column prop="RDONE" label="计价器里程/GPS里程" min-width="150"></el-table-column>
+            </el-table>
+            <el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next,total" @current-change="handleTablePageCurrentChange"></el-pagination>
+        </div>
+    </div>
+</template>
+
+<script>
+    import _ from 'underscore'
+    import axios from 'axios'
+    import moment from 'moment'
+    import {mapGetters} from 'vuex'
+    import {formatCustomizeDate} from "../../assets/js/util";
+    import TWUnit from "../../components/TWTableColumn/TWUnit";
+
+    export default {
+        name: "AbnormalOperationValuatorAnalysis",
+        data() {
+            return {
+                query:{
+                    vehicle: '',
+                    area:'主城区',
+                    stime: '',
+                    etime: ''
+                },
+                select: {
+                    typeList: [],
+                    pointList: [],
+                },
+                companyList: [],
+                table: {
+                    loading: false,
+                    data: [],
+                    pageSize: 20,
+                    currentPage: 1,
+                    total: 0
+                },
+            }
+        },
+        mounted() {
+            this.$nextTick(() => {
+                this.query.stime = formatCustomizeDate(moment(), 'YYYY-MM-DD 00:00:00');
+                this.query.etime = formatCustomizeDate(moment(), 'YYYY-MM-DD 23:59:59');
+                this.getAbnormalOperationValuatorAnalysis();
+            });
+        },
+        computed: {
+            ...mapGetters(['getLPNumber','getRegionReal']),
+            filterTableList() {
+                const {data, pageSize, currentPage} = this.table;
+                const pageIndex = currentPage - 1;
+                return _.filter(data, (item, index) => {
+                    return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+                })
+            }
+        },
+        methods: {
+            /*接口*/
+            queryVehicleSearch(query, cb) {
+                if (query.length < 3) cb(null);
+                else cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+            },
+            getAbnormalOperationValuatorAnalysis(){
+                this.table.loading = true;
+                const {vehicle,	area, stime, etime} = this.query;
+                const {currentPage,pageSize} = this.table;
+                axios.get('keyArea/getAbnormalOperationValuatorAnalysis', {
+                    baseURL: this.baseURL,
+                    params: {
+                        vehicle,
+                        area,
+                        stime: stime && moment(stime).format('YYYY-MM-DD HH:mm:ss'),
+                        etime: etime && moment(etime).format('YYYY-MM-DD HH:mm:ss'),
+                        currentPage,
+                        pageSize
+                    }
+                }).then(res => {
+                    console.log(res.data.datas);
+                    this.table.data = res.data.datas;
+                    this.table.total = res.data.count;
+                    this.table.loading = false;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            },
+            /*事件*/
+            handleQueryClick() {
+                this.table.currentPage = 1;
+                this.getAbnormalOperationValuatorAnalysis();
+            },
+            handleExportClick() {
+                const {vehicle, area, stime, etime} = this.query;
+                this.$confirm('是否需要导出?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    window.open(`${this.baseURL}keyArea/getAbnormalOperationValuatorAnalysisExcel?vehicle=${vehicle}&area=${area}&stime=${stime && moment(stime).format('YYYY-MM-DD HH:mm:ss')}&etime=${etime && moment(etime).format('YYYY-MM-DD HH:mm:ss')}`);
+                }).catch(() => {});
+            },
+            handleTablePageCurrentChange(index) {
+                this.table.currentPage = index;
+                this.getAbnormalOperationValuatorAnalysis();
+            }
+        },
+        components: {
+            'tw-unit': TWUnit
+        }
+    }
+</script>
+
+<style scoped>
+
+</style>

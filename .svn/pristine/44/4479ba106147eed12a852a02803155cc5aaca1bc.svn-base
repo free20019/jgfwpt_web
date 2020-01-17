@@ -1,0 +1,515 @@
+<!-- 重点车辆营运违章稽查 -->
+<template>
+    <div class="tw-template-wrapper">
+        <div class="tw-map" id="gaodeMap" v-loading="map.loading"></div>
+        <div class="tw-map-panel" v-if="showMapPanel">
+            <el-tabs class="tw-map-tabs tw-not__margin" type="border-card">
+                <el-input placeholder="请输入完整车牌号" v-model="vehicle.check" size="small" class="vehicleSearchBar">
+                    <el-button slot="append" type="primary" icon="el-icon-search" size="small" @click="handleVehicleQueryClick"></el-button>
+                    <div slot="prepend">
+                        <el-form >
+                            <el-form-item style="height:9px;">
+                                <el-upload class="upload" name="file" action="" accept=".xlsx" multiple :before-upload="handleChange">
+                                    <el-button icon="el-icon-folder-opened" size="small" type="primary"></el-button>
+                                </el-upload>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </el-input>
+                <div style="height: 40px">
+                    <div class="tw-list-item">
+                        <div class="tw-list-item__header">{{vehicle.checked}}</div>
+                        <div class="tw-list-item__wrapper">
+                            <img v-if="vehicle.checked!==''&&isFollow" src="../../assets/image/collection.png" alt="" @click="handleKeyFollowVehicleItemClick(vehicle.checked,2,0)">
+                            <img v-if="vehicle.checked!==''&&!isFollow" src="../../assets/image/no_collection.png" alt="" @click="handleKeyFollowVehicleItemClick(vehicle.checked,1,0)">
+                        </div>
+                    </div>
+                </div>
+                <el-input placeholder="请输入车牌号码" v-model="vehicle.search" size="small" class="vehicleSearchBar" @input="handleFilterClick">
+                    <el-button slot="append" type="primary" icon="el-icon-search" size="small"></el-button>
+                </el-input>
+                <div class="tw-list" v-scrollbar>
+                    <div class="tw-list-item" v-for="(item,index) in vehicleList" :key="index"  @click="handleVehicleItemClick(item,index)">
+                        <div class="tw-list-item__header">{{item.VEHICLE}}</div>
+                        <div class="tw-list-item__wrapper">
+                            <img src="../../assets/image/collection.png" alt="" @click="handleKeyFollowVehicleItemClick(item.VEHICLE,2,1)">
+                        </div>
+                    </div>
+                </div>
+            </el-tabs>
+            <div class="el-tabs-end" v-if="vehicle.follow.length>0">
+                <el-button style="width: 90%;" type="primary" icon="el-icon-delete-solid" size="small" @click="handleClearClick">清除</el-button>
+            </div>
+        </div>
+        <div class="tw-map-toolbar tw-toolbar__bottom">
+            <div class="tw-map-toolbar-item" :class="showMapPanelClassName" @click="handleShowMapPanelClick"></div>
+            <div class="tw-map-toolbar-item">抓拍监控：{{vehicleStatus.total}} 辆</div>
+            <div class="tw-map-toolbar-item">重点监控：<a href="javascript:" @click="handleDialogShowClick(1)">{{vehicleStatus.focus}}</a>  辆</div>
+            <div class="tw-map-toolbar-item">故障监控：<a href="javascript:" @click="handleDialogShowClick(2)">{{vehicleStatus.fault}}</a>  辆</div>
+            <!--<div class="tw-map-toolbar-item" style="cursor: pointer;">路况</div>-->
+        </div>
+        <el-dialog :title="dialog.title" :visible.sync="dialog.display" width="35%" center>
+            <el-table :data="filterList" style="height: 350px;margin-bottom: 10px;overflow: auto">
+                <el-table-column type="index" label="序号" align="center" width="50" :resizable="false"></el-table-column>
+                <el-table-column prop="VEHICLE_NO" label="车牌号码" align="center" width="100"></el-table-column>
+                <el-table-column prop="GET_TIME" label="时间" align="center" width="180"></el-table-column>
+                <el-table-column prop="GET_LOCATION" label="抓拍地点" align="center" min-width="180" :resizable="false"></el-table-column>
+            </el-table>
+            <el-pagination background :page-size="dialog.pageSize" :current-page="dialog.currentPage" :total="dialog.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+        </el-dialog>
+    </div>
+
+</template>
+
+<script>
+    import _ from 'underscore'
+    import axios from 'axios'
+    import offlineCar from '../../assets/image/car/offline.png'
+    import emptyCar from '../../assets/image/car/empty-car.png'
+    import heavyTruck from '../../assets/image/car/heavy-truck.png'
+
+    export default {
+        name: 'KeyVehicleOperationViolationInspection',
+        data() {
+            return {
+                interfaceTimer: null,
+                map: {
+                    loading: false,
+                    center: [120.170076, 30.277559],
+                    zoom:14,
+                    points: [],
+                    mass:null,
+                    style: [],
+                    infoWindow: null,
+                    mapMarker:null
+                },
+                showMapPanel: true,
+                vehicleStatus:{
+                    total: 0,
+                    fault: 0,
+                    focus: 0,
+                },
+                isFollow:false,
+                vehicle: {
+                    fault: [],
+                    focus: [],
+                    type: 0,
+                    check: '',
+                    checked: '',
+                    search: '',
+                    all: [],
+                    follow :[],
+                    data: [],
+                    selectIndex: ''
+                },
+                dialog: {
+                    data:[],
+                    title: '',
+                    display: false,
+                    loading: false,
+                    pageSize: 1000,
+                    currentPage: 1,
+                    total: 0
+                },
+            }
+        },
+        mounted() {
+            this.interfaceTimer = setInterval(() => {
+                this.getAreaMonitor();
+            }, 1000 * 60);
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    this.getAreaMonitor();
+                    this.initMap();
+                },500);
+            })
+        },
+        destroyed() {
+            if (this.interfaceTimer) clearInterval(this.interfaceTimer)
+        },
+        computed: {
+            filterList() {
+                const {data, pageSize, currentPage} = this.dialog;
+                const pageIndex = currentPage - 1;
+                return _.filter(data, (item, index) => {
+                    return index >= pageIndex * pageSize && index < currentPage * pageSize;
+                })
+            },
+            showMapPanelClassName() {
+                return this.showMapPanel ? 'el-icon-s-fold' : 'el-icon-s-unfold';
+            },
+            vehicleList() {
+                return this.vehicle.data || [];
+            },
+            vehicleInfo() {
+                const { data, selectIndex } = this.vehicle;
+                return data[selectIndex] || {};
+            },
+            callPoliceClassName(){}
+
+        },
+        methods: {
+            //获取所有车辆及定位
+            getAreaMonitor(){
+                if(this.vehicle.all.length===0){
+                    this.map.loading=true;
+                }
+                axios.get('keyArea/getAreaMonitor', {
+                    baseURL: this.baseURL,
+                    params: {}
+                }).then(res => {
+                    this.vehicle.all=res.data.vehilist||[];
+                    this.vehicle.fault=res.data.faultlist||[];
+                    this.vehicle.focus=res.data.focuslist||[];
+                    this.vehicleStatus.total=this.vehicle.fault.length+this.vehicle.focus.length;
+                    this.vehicleStatus.fault=this.vehicle.fault.length;
+                    this.vehicleStatus.focus=this.vehicle.focus.length;
+                    this.findKeyFollowVehicle();
+                    this.map.loading=false;
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            },
+            //获取所有重点关注车辆
+            findKeyFollowVehicle(){
+                axios.get('keyArea/findKeyFollowVehicle', {
+                    baseURL: this.baseURL,
+                    params: {}
+                }).then(res => {
+                    this.vehicle.follow=res.data||[];
+                    this.vehicle.data=this.vehicle.follow;
+                    //打点
+                    if(this.map.mass!=null){
+                        this.map.mass.clear();
+                    }
+                    if(this.map.infoWindow!=null){
+                        this.map.infoWindow.setMap(null);
+                    }
+                    this.map.points=[];
+                    _.each(this.vehicle.follow, item=>{
+                        _.each(this.vehicle.all,vehicle=>{
+                            if(vehicle.VEHI_NO===item.VEHICLE){
+                                let s = {};
+                                s.lnglat = [vehicle.LONGI,vehicle.LATI];
+                                s.name = vehicle.VEHI_NO+'<br/>'+vehicle.COMP_NAME;
+                                if(vehicle.ONLINE===1){
+                                    s.style = 0;
+                                }else if(vehicle.STATE===0){
+                                    s.style = 1;
+                                }else if(vehicle.STATE===1){
+                                    s.style = 2;
+                                }else{
+                                    s.style = 0;
+                                }
+                                s.vehicle=vehicle.VEHI_NO;
+                                this.map.points.push(s);
+                            }
+                        });
+                    });
+                    //海量点
+                    this.markerVehicle(this.map.points);
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            },
+            //清除所有重点车辆
+            handleClearClick(){
+                this.$confirm('确定全部清除吗?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    axios.get('keyArea/deleteKeyFollowVehicle', {
+                        baseURL: this.baseURL,
+                        params: {}
+                    }).then(res => {
+                        if(res.data>0){
+                            this.$message({message: "操作成功!", type: 'success'});
+                            this.findKeyFollowVehicle();
+                        }else{
+                            this.$message.error('操作失败！');
+                        }
+                    }).catch(function (error) {
+                        console.error(error);
+                    });
+                }).catch(() => {
+                });
+            },
+            //导入Excel
+            handleChange(file){
+                let formData=new FormData();
+                formData.append('file',file);
+                axios.post("keyArea/upload", formData, {
+                    baseURL: this.baseURL,
+                    headers: {'Content-Type':'multipart/form-data'}
+                }).then((res)=>{
+                    this.$message(res.data);
+                    this.findKeyFollowVehicle();
+                }).catch(function (error) {
+                    console.error(error);
+                });
+                return false;
+            },
+            //过滤车辆显示
+            handleFilterClick(){
+                this.vehicle.type = 0;
+                this.vehicle.data=_.filter(this.vehicle.follow,item=>{
+                    return item.VEHICLE.indexOf(this.vehicle.search)>-1;
+                });
+            },
+            //单个车辆判断车牌号是否正确，并显示
+            handleVehicleQueryClick() {
+                if(this.vehicle.check.length>6){
+                    if(_.filter(this.vehicle.all,item=>{return item.VEHI_NO===this.vehicle.check}).length===0){
+                        this.$message.error("请输入正确车牌号!!");
+                    }else{
+                        this.vehicle.checked=this.vehicle.check;
+                        let a=_.filter(this.vehicle.follow,item=>{
+                            return item.VEHICLE===this.vehicle.checked
+                        });
+                        this.isFollow=a.length>0;
+                    }
+                }else{
+                    this.$message.error("请输入完整车牌号!!");
+                }
+            },
+            //单个车辆关注或者取消关注
+            handleKeyFollowVehicleItemClick(vehicle,whether,where){
+                let text='确定关注吗?';
+                if(this.isFollow===true||where===1){
+                    text='确定取消关注吗?'
+                }
+                this.$confirm(text, '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    axios.get('keyArea/addOrDeleteKeyFollowVehicleOne', {
+                        baseURL: this.baseURL,
+                        params: {
+                            vehicle,
+                            type :0,
+                            whether
+                        }
+                    }).then(res => {
+                        if(res.data>0){
+                            this.$message({message: "操作成功!", type: 'success'});
+                            this.vehicle.checked='';
+                            this.findKeyFollowVehicle();
+                        }else{
+                            this.$message.error('操作失败！');
+                        }
+                    }).catch(function (error) {
+                        console.error(error);
+                    });
+                }).catch(() => {
+                });
+
+            },
+            //打印
+            markerVehicle(obj){
+                this.map.style = [{
+                    url: offlineCar,
+                    anchor: new AMap.Pixel(12, 18),
+                    size: new AMap.Size(30, 30),
+                }, {
+                    url: emptyCar,
+                    anchor: new AMap.Pixel(12, 18),
+                    size: new AMap.Size(30, 30),
+                },{
+                    url: heavyTruck,
+                    anchor: new AMap.Pixel(12, 18),
+                    size: new AMap.Size(30, 30),
+                }];
+                this.map.mass = new AMap.MassMarks(obj, {
+                    opacity: 0.8,
+                    zIndex: 111,
+                    cursor: 'pointer',
+                    style: this.map.style
+                });
+
+                let marker = new AMap.Marker({content: ' ', map: this.map});
+
+                this.map.mass.on('mouseover', function (e) {
+                    marker.setPosition(e.data.lnglat);
+                    marker.setLabel({content: e.data.name})
+                });
+                this.map.mass.on('mouseout', function (e) {
+                    marker.setPosition(e.data.lnglat);
+                    marker.setLabel({content: ''})
+                });
+                let _this= this;
+                this.map.mass.on('click', function (e) {
+                    _this.addInfoWindow(_.filter(_this.vehicle.all,item=>{
+                        return item.VEHI_NO===e.data.vehicle;
+                    })[0],0);
+                });
+                this.map.mass.setMap(this.map);
+            },
+            addInfoWindow(item,type){
+                //点判断是否消失
+                if(this.map.mapMarker!=null){
+                    this.map.mapMarker.setMap(null);
+                }
+                if(type===1){
+                    this.map.mapMarker = new AMap.Marker({
+                        angle:item.ANGLE,
+                        map: this.map,
+                        offset: new AMap.Pixel(-14,-18), //相对于基点的偏移位置
+                        position: new AMap.LngLat(item.LONGI,item.LATI),
+                        draggable: false,  //是否可拖动
+                        icon: this.mapIconType(item.ONLINE,item.STATE)   //自定义点标记覆盖物内容
+                    });
+                }
+                let focusVehicle = item.VEHI_NO;
+                let focusTypeMap=_.filter(this.vehicle.follow,item=>{
+                   return item.VEHICLE===focusVehicle
+                })[0];
+                let txt = "<table><tr><td><b style='color:#3399FF'>"+item.VEHI_NO+"</b></td>" +
+                    "<td></td></tr><tr><td><b>[所属公司]</b>："+item.COMP_NAME+"</td></tr>" +
+                    "<tr><td><b>[车辆类型]</b>："+item.VT_NAME+"</td></tr>" +
+                    "<tr><td><b>[车辆颜色]</b>："+item.VC_NAME+"</td></tr>" +
+                    "<tr><td><b>[车辆速度]</b>："+item.SPEED+"</td></tr>" +
+                    "<tr><td><b>[车辆状态]</b>："+(item.STATE===0?'空车':(item.STATE===1?'重车':''))+"</td></tr>" +
+                    "<tr><td><b>[SIM卡]</b>："+(item.VEHI_SIM==null?"":item.VEHI_SIM)+"</td></tr>" +
+                    "<tr><td><b>[经度]</b>："+item.LONGI+"</td></tr><tr><td><b>[纬度]</b>："+item.LATI+"</td></tr>" +
+                    "<tr><td><b>[联系人]</b>："+(item.OWN_NAME==null?"":item.OWN_NAME)+"</td></tr>" +
+                    "<tr><td><b>[联系电话]</b>："+(item.OWN_TEL==null?"":item.OWN_TEL)+"</td></tr>" +
+                    "<tr><td><b>[GPS时间]</b>："+item.STIME+"</td></tr>" +
+                    "<tr><td><b>[关注类型]</b>："+(focusTypeMap.TYPE==null?"":(focusTypeMap.TYPE===0?"重点关注车辆":(focusTypeMap.TYPE===1?"逾期未维修":"")))+"</td></tr>" +
+                    "";
+                let info = [];
+                info.push(txt);
+                this.map.setCenter([item.LONGI,item.LATI]);
+                this.map.infoWindow= new AMap.InfoWindow({
+                    offset: new AMap.Pixel(3, 0),
+                    content: info.join("</table>")
+                });
+                this.map.infoWindow.open(this.map,[item.LONGI,item.LATI]);
+            },
+            //空重车、未上线车辆图标
+            mapIconType(online, carType) {
+                if (online === 1) return offlineCar;
+                else if (carType === 0) return emptyCar;
+                else if (carType === 1) return heavyTruck;
+                else return offlineCar;
+            },
+            //点击列表在地图打点
+            handleVehicleItemClick(item, index) {
+                this.vehicle.type = 1;
+                this.vehicle.selectIndex = index;
+                let window=_.filter(this.vehicle.all,vehicle=>{
+                    return vehicle.VEHI_NO===item.VEHICLE
+                });
+                this.addInfoWindow(window[0],0);
+            },
+            //列表显示或消失
+            handleShowMapPanelClick() {
+                this.showMapPanel = !this.showMapPanel
+            },
+            //Dialog显示
+            handleDialogShowClick(type){
+                if(type===1){
+                    this.dialog.title = '重点监控';
+                    this.dialog.data=this.vehicle.focus;
+                }else{
+                    this.dialog.title = '故障监控';
+                    this.dialog.data=this.vehicle.fault;
+                }
+                this.dialog.display = true;
+                this.dialog.total = this.dialog.data.length;
+                this.dialog.currentPage = 1;
+            },
+            handleTablePageCurrentChange(index) {
+                this.dialog.currentPage = index;
+            },
+            //初始化地图
+            initMap() {
+                this.map = new AMap.Map('gaodeMap', {
+                    center: this.map.center,
+                    resizeEnable: true,
+                    zoom: this.map.zoom
+                })
+            },
+        }
+    }
+</script>
+
+<style lang="scss" scope>
+    .vehicleSearchBar {
+        width: calc(100% - 20px);
+        margin: 10px;
+    }
+
+    .tw-map {
+        &-panel {
+            position: absolute;
+            top: 40px;
+            left: 20px;
+            width: 350px;
+            height: calc(100% - 140px);
+            border-radius: 8px;
+            .el-tabs__nav-scroll {
+                user-select: none;
+            }
+            &__close {
+                position: absolute;
+                top: 0;
+                right: 2px;
+                display: inline-block;
+                width: 39px;
+                height: 39px;
+                font-size: 26px;
+                line-height: 39px;
+                text-align: center;
+                color: #999999;
+                z-index: 5;
+                cursor: pointer;
+                user-select: none;
+
+                &:hover {
+                    color: #e81123;
+                }
+            }
+        }
+    }
+
+    .el-tabs-end{
+        position: relative;
+        margin-top: -10%;
+        margin-left: 10%;
+    }
+
+    .tw-list {
+        position: relative;
+        height: calc(100% - 150px);
+        &-item {
+            // height: 40px;
+            padding: 5px 10px;
+            border-bottom: 1px solid #eeeeee;
+            cursor: pointer;
+
+            &__header {
+                font-size: 16px;
+                font-weight: bolder;
+                line-height: 24px;
+                display:inline;
+                color: #333333;
+            }
+            &__wrapper {
+                font-size: 12px;
+                line-height: 18px;
+                float: right;
+                margin-right: 10%;
+                display:inline;
+                color: #999999;
+            }
+        }
+    }
+</style>

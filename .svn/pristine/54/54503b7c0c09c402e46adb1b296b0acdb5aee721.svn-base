@@ -1,0 +1,976 @@
+<!-- 重点监控区域出租车数量预警 -->
+<template>
+  <div class="tw-template-wrapper">
+    <div class="tw-map" id="gaodeMap"></div>
+    <div class="tw-map-panel" v-if="showMapPanel">
+      <div class="tw-map-panel__close">&times;</div>
+      <el-tabs class="tw-map-tabs tw-not__margin" type="border-card">
+        <el-tab-pane label="区域管理">
+          <div class="tw-table-list" v-show="showAreaType">
+            <div class="tw-table-header">
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-name">56区域</div>
+                <div class="tw-item-col tw-number">车辆数</div>
+                <div class="tw-item-col tw-number">预报警数</div>
+              </div>
+            </div>
+            <div class="tw-table-body" v-scrollbar>
+              <div
+                :class="callPoliceClassName(item)"
+                v-for="(item,index) in areaList"
+                :key="index"
+                @click="handleAreaItemClick(item,index)"
+              >
+                <div class="tw-item-col tw-name">{{item.name}}</div>
+                <div class="tw-item-col tw-number">{{item.number}}</div>
+                <div class="tw-item-col tw-number">{{item.callPolice}}</div>
+              </div>
+            </div>
+          </div>
+          <div class="tw-panel" v-show="!showAreaType">
+            <div class="tw-panel-header">
+              <i class="tw-return el-icon-arrow-left" @click="handleRearReturnClick"></i>
+              <span class="tw-title">{{selectAreaInfo.name}}</span>
+            </div>
+            <div class="tw-panel-body tw-table-list">
+              <div class="tw-table-body" v-scrollbar>
+                <div
+                  :class="callPoliceClassName(item)"
+                  v-for="(item,index) in areaVehicleList"
+                  :key="index"
+                  @click="handleAreaVehicleItemClick"
+                >
+                  <div class="tw-item-col tw-address">{{item.address}}</div>
+                  <div class="tw-item-col tw-vehicle">{{item.vehicle}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="车辆监控">
+          <el-input
+            placeholder="请输入车牌号码"
+            v-model="vehicle.search"
+            size="small"
+            class="vehicleSearchBar"
+          >
+            <el-button
+              slot="prepend"
+              icon="el-icon-arrow-left"
+              v-if="!showVehicleType"
+              size="small"
+              @click="handleVehicleReturnClick"
+            ></el-button>
+            <el-button
+              slot="append"
+              type="primary"
+              icon="el-icon-search"
+              size="small"
+              @click="handleVehicleQueryClick"
+            ></el-button>
+          </el-input>
+          <div class="tw-list" v-show="showVehicleType" v-scrollbar>
+            <div
+              class="tw-list-item"
+              v-for="(item,index) in vehicleList"
+              :key="index"
+              @click="handleVehicleItemClick(item,index)"
+            >
+              <div class="tw-list-item__header">{{item.vehicle}}</div>
+              <div class="tw-list-item__wrapper">{{item.ssgs}}</div>
+            </div>
+          </div>
+          <div class="tw-table-list" v-show="!showVehicleType">
+            <div class="tw-table-body" v-scrollbar>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">所属公司：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.ssgs}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆类型：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.cllx}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆颜色：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.clys}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆速度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.clsd}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆状态：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.clzt}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">SIM卡：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.simk}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">联系人：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.lxr}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">联系电话：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.lxdh}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">经度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.jd}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">纬度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.wd}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">GPS时间：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.gpssj}}</div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+    <div class="tw-map-toolbar tw-toolbar__bottom">
+      <div
+        class="tw-map-toolbar-item"
+        :class="showMapPanelClassName"
+        @click="handleShowMapPanelClick"
+      ></div>
+      <div class="tw-map-toolbar-item">总数：{{3388}}辆</div>
+      <div class="tw-map-toolbar-item">在线：{{3388}}辆</div>
+      <div class="tw-map-toolbar-item">重车：{{3388}}辆</div>
+      <div class="tw-map-toolbar-item">空车：{{3388}}辆</div>
+      <div class="tw-map-toolbar-item">离线：{{3388}}辆</div>
+      <div class="tw-map-toolbar-item" style="cursor: pointer;">路况</div>
+    </div>
+    <div class="tw-map-dialog">
+      <div class="tw-map-dialog__header">
+        <div class="tw-title">浙ATF395</div>
+        <div class="tw-map-dialog__close"></div>
+      </div>sdjfasjdf
+      <br />dfjijeklajdf
+      <br />jdfiejfladjf
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+    </div>
+  </div>
+</template>
+
+<script>
+import AMap from 'AMap' // 引入高德地图
+export default {
+  name: 'areaVehicleQuantity',
+  data() {
+    return {
+      showMapPanel: true,
+      area: {
+        type: 0,
+        data: [
+          {
+            name: '北京市',
+            number: 10,
+            callPolice: 20,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '莫干山路',
+            number: 15,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '总管塘',
+            number: 1,
+            callPolice: 10,
+            area: [{ address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }]
+          },
+          {
+            name: '北城天地',
+            number: 1,
+            callPolice: 10,
+            area: [{ address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }]
+          },
+          {
+            name: '黎明村',
+            number: 3,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          { name: '省信访局', number: 0, callPolice: 10, area: [] },
+          { name: '华驰汽修厂', number: 0, callPolice: 10, area: [] },
+          {
+            name: '甘长村',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '湖州街',
+            number: 4,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '西田城',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '汽车南站',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '南庄兜2',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '神州专车办公点',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '曹操专车办公点',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '地铁一号线滨江江陵路地3',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '城站',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '钱江市场',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '文泽路站',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '临平汽车北站',
+            number: 6,
+            callPolice: 17,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '湖州街',
+            number: 4,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '西田城',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '汽车南站',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '南庄兜2',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '神州专车办公点',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '曹操专车办公点',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '地铁一号线滨江江陵路地3',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '城站',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '钱江市场',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '文泽路站',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          },
+          {
+            name: '临平汽车北站',
+            number: 6,
+            callPolice: 10,
+            area: [
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' },
+              { address: '杭州公共交通下沙有限公司', vehicle: '浙ATF395' }
+            ]
+          }
+        ],
+        selectIndex: ''
+      },
+      vehicle: {
+        type: 0,
+        search: '',
+        data: [
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 13.5,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 13.6,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 13.7,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 13.8,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 13.9,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.0,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.1,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.2,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.3,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.4,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.5,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.6,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.7,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.8,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 14.9,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 15.0,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          },
+          {
+            vehicle: '浙AQT322',
+            ssgs: '杭州临平客运出租有限公司',
+            cllx: '桑塔纳',
+            clys: '绿色',
+            clsd: 15.1,
+            clzt: 0,
+            simk: '15824140597',
+            lxr: '王伟国',
+            lxdh: '18767156000',
+            jd: '120.246675',
+            wd: '30.384386',
+            gpssj: '2019-10-12 09:22:51'
+          }
+        ],
+        selectIndex: ''
+      }
+    }
+  },
+  mounted() {
+    this.initMap()
+  },
+  computed: {
+    showMapPanelClassName() {
+      return this.showMapPanel ? 'el-icon-s-fold' : 'el-icon-s-unfold'
+    },
+    showAreaType() {
+      return this.area.type % 2 === 0 || this.area.selectIndex === ''
+    },
+    areaList() {
+      return this.area.data || []
+    },
+    areaVehicleList() {
+      const { data, selectIndex } = this.area
+      if (data[selectIndex] == null) return []
+      return data[selectIndex].area || []
+    },
+    selectAreaInfo() {
+      const { data, selectIndex } = this.area
+      return data[selectIndex] || {}
+    },
+    showVehicleType() {
+      return this.vehicle.type % 2 === 0 || this.vehicle.selectIndex === ''
+    },
+    vehicleList() {
+      return this.vehicle.data || []
+    },
+    vehicleInfo() {
+      const { data, selectIndex } = this.vehicle
+      return data[selectIndex] || {}
+    }
+  },
+  methods: {
+    handleAreaItemClick(item, index) {
+      this.area.type = 1
+      this.area.selectIndex = index
+      console.info('handleAreaItemClick:')
+    },
+    handleRearReturnClick() {
+      this.area.type++
+      this.area.selectIndex = ''
+    },
+    handleAreaVehicleItemClick() {},
+    handleVehicleQueryClick() {
+      this.vehicle.type = 0
+      this.vehicle.selectIndex = ''
+    },
+    handleVehicleReturnClick() {
+      this.vehicle.type = 0
+      this.vehicle.selectIndex = ''
+    },
+    handleVehicleItemClick(item, index) {
+      this.vehicle.type = 1
+      this.vehicle.selectIndex = index
+    },
+    handleShowMapPanelClick() {
+      this.showMapPanel = !this.showMapPanel
+    },
+    initMap() {
+      let map = new AMap.Map('gaodeMap', {
+        center: [120.170076, 30.277559],
+        resizeEnable: true,
+        zoom: 14
+      })
+    },
+    callPoliceClassName(item) {
+      const { number, callPolice } = item
+      let className = 'tw-table-item'
+      if (number == null || callPolice == null) return className
+      return number > callPolice ? className + ' tw-item-police' : className
+    }
+  }
+}
+</script>
+
+<style lang="scss" scope>
+.vehicleSearchBar {
+  width: calc(100% - 20px);
+  margin: 10px;
+}
+.tw-map {
+  &-panel {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    width: 350px;
+    height: calc(100% - 140px);
+    border-radius: 8px;
+    .el-tabs__nav-scroll {
+      user-select: none;
+    }
+    &__close {
+      position: absolute;
+      top: 0;
+      right: 2px;
+      display: inline-block;
+      width: 39px;
+      height: 39px;
+      font-size: 26px;
+      line-height: 39px;
+      text-align: center;
+      color: #999999;
+      z-index: 5;
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        color: #e81123;
+      }
+    }
+  }
+}
+.tw-table-item .tw-item-col {
+  &.tw-name {
+    width: calc(100% - 140px);
+  }
+  &.tw-number {
+    width: 70px;
+  }
+  &.tw-address {
+    overflow: hidden;
+    width: calc(100% - 90px);
+    white-space: nowrap;
+  }
+  &.tw-vehicle {
+    width: 90px;
+  }
+}
+
+.tw-list {
+  position: relative;
+  height: calc(100% - 52px);
+  &-item {
+    // height: 40px;
+    padding: 5px 10px;
+    border-bottom: 1px solid #eeeeee;
+    cursor: pointer;
+
+    &__header {
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 24px;
+      color: #333333;
+    }
+    &__wrapper {
+      font-size: 12px;
+      line-height: 18px;
+      color: #999999;
+    }
+  }
+}
+.tw-panel {
+  height: 100%;
+  &-header {
+    padding: 0 5px;
+    font-size: 18px;
+    border-bottom: 1px solid #eeeeee;
+
+    .tw-return {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      text-align: center;
+      cursor: pointer;
+
+      &:not(:last-child) {
+        position: relative;
+        margin-right: 10px;
+        &::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          right: 0;
+          height: 60%;
+          border-right: 1px solid #eeeeee;
+          transform: translateY(-50%);
+        }
+      }
+    }
+
+    .tw-title {
+      display: inline-block;
+      width: calc(100% - 50px);
+      text-align: center;
+      text-indent: -50px;
+    }
+  }
+  &-body {
+    height: calc(100% - 41px);
+  }
+}
+</style>

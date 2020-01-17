@@ -1,0 +1,618 @@
+<!-- 重点监控区域出租车数量预警 -->
+<template>
+  <div class="tw-template-wrapper">
+    <div class="tw-map" id="gaodeMap" v-loading="map.loading"></div>
+    <!--<el-amap ref="map" vid="amap" :center="map.center" :zoom="map.zoom" :plugin="map.plugin" :events="map.events" :amap-manager="amapManager">-->
+    <!--</el-amap>-->
+    <div class="tw-map-panel" v-if="showMapPanel">
+      <div class="tw-map-panel__close">&times;</div>
+      <el-tabs class="tw-map-tabs tw-not__margin" type="border-card">
+        <el-tab-pane label="区域管理">
+          <div class="tw-table-list" v-show="showAreaType">
+            <div class="tw-table-header">
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-name">56区域</div>
+                <div class="tw-item-col tw-number">车辆数</div>
+                <div class="tw-item-col tw-number">预报警数</div>
+              </div>
+            </div>
+            <div class="tw-list" v-scrollbar>
+              <div
+                :class="callPoliceClassName(item)"
+                v-for="(item,index) in areaList"
+                :key="index"
+                @click="handleAreaItemClick(item,index)"
+              >
+                <div class="tw-item-col tw-name">{{item.AREA_NAME}}</div>
+                <div class="tw-item-col tw-number">{{item.hasOwnProperty("VEHILIST")?item.VEHILIST.length:0}}</div>
+                <div class="tw-item-col tw-number">{{item.ALARMNUM}}</div>
+              </div>
+            </div>
+          </div>
+          <div class="tw-panel" v-show="!showAreaType">
+            <div class="tw-panel-header">
+              <i class="tw-return el-icon-arrow-left" @click="handleRearReturnClick"></i>
+              <span class="tw-title">{{selectAreaInfo.name}}</span>
+            </div>
+            <div class="tw-panel-body tw-table-list">
+              <div class="tw-table-body" v-scrollbar>
+                <div
+                  :class="callPoliceClassName(item)"
+                  v-for="(item,index) in areaVehicleList"
+                  :key="index"
+                  @click="handleAreaVehicleItemClick(item.split(';')[0])"
+                >
+                  <div class="tw-item-col tw-address">{{item.split(";")[1]}}</div>
+                  <div class="tw-item-col tw-vehicle">{{item.split(";")[0]}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="车辆监控">
+          <el-input
+            placeholder="请输入车牌号码"
+            v-model="vehicle.search"
+            size="small"
+            class="vehicleSearchBar"
+            @input="handleFilterClick"
+          >
+            <el-button
+              slot="prepend"
+              icon="el-icon-arrow-left"
+              v-if="!showVehicleType"
+              size="small"
+              @click="handleVehicleReturnClick"
+            ></el-button>
+            <el-button
+              slot="append"
+              type="primary"
+              icon="el-icon-search"
+              size="small"
+              @click="handleVehicleQueryClick"
+            ></el-button>
+          </el-input>
+          <div class="tw-list" v-show="showVehicleType" v-scrollbar>
+            <div
+              class="tw-list-item"
+              v-for="(item,index) in vehicleList"
+              :key="index"
+              @click="handleVehicleItemClick(item,index)"
+            >
+              <div class="tw-list-item__header">{{item.VEHI_NO}}</div>
+              <div class="tw-list-item__wrapper">{{item.COMP_NAME}}</div>
+            </div>
+          </div>
+          <div class="tw-table-list" v-show="!showVehicleType">
+            <div class="tw-table-body" v-scrollbar>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">所属公司：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.COMP_NAME}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆类型：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.VT_NAME}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆颜色：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.VC_NAME}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆速度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.SPEED}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">车辆状态：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.STATE===0?'空车':(vehicleInfo.STATE===1?'重车':'')}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">SIM卡：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.VEHI_SIM}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">联系人：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.OWN_NAME}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">联系电话：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.OWN_TEL}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">经度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.LONGI}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">纬度：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.LATI}}</div>
+              </div>
+              <div class="tw-table-item">
+                <div class="tw-item-col tw-label">GPS时间：</div>
+                <div class="tw-item-col tw-value">{{vehicleInfo.STIME}}</div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+    <div class="tw-map-toolbar tw-toolbar__bottom">
+      <div
+        class="tw-map-toolbar-item"
+        :class="showMapPanelClassName"
+        @click="handleShowMapPanelClick"
+      ></div>
+      <div class="tw-map-toolbar-item">总数：{{vehicleStatus.total}}辆</div>
+      <div class="tw-map-toolbar-item">在线：{{vehicleStatus.online}}辆</div>
+      <div class="tw-map-toolbar-item">重车：{{vehicleStatus.heavyTruck}}辆</div>
+      <div class="tw-map-toolbar-item">空车：{{vehicleStatus.emptyCar}}辆</div>
+      <div class="tw-map-toolbar-item">离线：{{vehicleStatus.offline}}辆</div>
+      <div class="tw-map-toolbar-item" style="cursor: pointer;">路况</div>
+    </div>
+  </div>
+</template>
+
+<script>
+// import AMap from 'AMap' // 引入高德地图'
+// import { AMapManager } from 'vue-amap';
+import _ from 'underscore'
+import axios from 'axios'
+import offlineCar from '../../assets/image/car/offline.png'
+import emptyCar from '../../assets/image/car/empty-car.png'
+import heavyTruck from '../../assets/image/car/heavy-truck.png'
+
+// let amapManager = new AMapManager();
+export default {
+  name: 'areaVehicleQuantity',
+  data() {
+    return {
+      interfaceTimer: null,
+      map: {
+        loading: false,
+        center: [120.170076, 30.277559],
+        zoom:14,
+        path: null,
+        polygon: null,
+        points: [],
+        mass:null,
+        style: [],
+        infoWindow: null,
+        mapMarker:null
+      },
+      showMapPanel: true,
+      area: {
+        type: 0,
+        data: [
+          // {
+          //   AREA_NAME: '北京市',
+          //   ALARMNUM: 20,
+          //   VEHILIST: [
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //     '浙ATF395;杭州公共交通下沙有限公司',
+          //   ]
+          // },
+        ],
+        selectIndex: '',
+      },
+      vehicleStatus:{
+        total: 0,
+        online: 0,
+        offline: 0,
+        heavyTruck: 0,
+        emptyCar: 0
+      },
+      vehicle: {
+        type: 0,
+        search: '',
+        all: [],
+        data: [
+          // {
+          //   vehicle: '浙AQT322',
+          //   ssgs: '杭州临平客运出租有限公司',
+          //   cllx: '桑塔纳',
+          //   clys: '绿色',
+          //   clsd: 13.5,
+          //   clzt: 0,
+          //   simk: '15824140597',
+          //   lxr: '王伟国',
+          //   lxdh: '18767156000',
+          //   jd: '120.246675',
+          //   wd: '30.384386',
+          //   gpssj: '2019-10-12 09:22:51'
+          // },
+        ],
+        selectIndex: ''
+      }
+    }
+  },
+  mounted() {
+    this.interfaceTimer = setInterval(() => {
+      this.getAreaMonitor();
+    }, 1000 * 60);
+    this.getAreaMonitor();
+    this.$nextTick(() => {
+      setTimeout(() => {
+        this.initMap();
+      },500);
+    })
+  },
+  destroyed() {
+    if (this.interfaceTimer) clearInterval(this.interfaceTimer)
+  },
+  computed: {
+    showMapPanelClassName() {
+      return this.showMapPanel ? 'el-icon-s-fold' : 'el-icon-s-unfold';
+    },
+    showAreaType() {
+      return this.area.type % 2 === 0 || this.area.selectIndex === '';
+    },
+    areaList() {
+      return this.area.data || [];
+    },
+    areaVehicleList() {
+      const { data, selectIndex } = this.area;
+      if (data[selectIndex] == null) return [];
+      return data[selectIndex].VEHILIST || [];
+    },
+    selectAreaInfo() {
+      const { data, selectIndex } = this.area;
+      return data[selectIndex] || {};
+    },
+    showVehicleType() {
+      return this.vehicle.type % 2 === 0 || this.vehicle.selectIndex === '';
+    },
+    vehicleList() {
+      return this.vehicle.data || [];
+    },
+    vehicleInfo() {
+      const { data, selectIndex } = this.vehicle;
+      return data[selectIndex] || {};
+    }
+  },
+  methods: {
+    getAreaMonitor(){
+      if(this.area.selectIndex===''){
+        this.map.loading=true;
+      }
+      axios.get('keyArea/getAreaMonitor', {
+        baseURL: this.baseURL,
+        params: {}
+      }).then(res => {
+        this.area.data=res.data.arealist||[];
+        this.vehicle.all=res.data.vehilist||[];
+        this.vehicle.data=[];
+        //车辆状态数量
+        this.vehicleStatus.total = res.data.num.total || 0;
+        this.vehicleStatus.online = res.data.num.online || 0;
+        this.vehicleStatus.offline = res.data.num.notOnline || 0;
+        this.vehicleStatus.heavyTruck = res.data.num.heavyCar || 0;
+        this.vehicleStatus.emptyCar = res.data.num.emptyCar || 0;
+        //刷新之后区域重新显示
+        if(this.area.selectIndex!==''&&this.area.data.length>this.area.selectIndex){
+          this.handleAreaItemClick(this.area.data[this.area.selectIndex],this.area.selectIndex);
+        }
+        this.map.loading=false;
+      }).catch(function (error) {
+        console.error(error);
+      });
+    },
+    //打印
+    markerVehicle(obj){
+      this.map.style = [{
+        url: offlineCar,
+        anchor: new AMap.Pixel(12, 18),
+        size: new AMap.Size(30, 30),
+      }, {
+        url: emptyCar,
+        anchor: new AMap.Pixel(12, 18),
+        size: new AMap.Size(30, 30),
+      },{
+        url: heavyTruck,
+        anchor: new AMap.Pixel(12, 18),
+        size: new AMap.Size(30, 30),
+      }];
+      this.map.mass = new AMap.MassMarks(obj, {
+        opacity: 0.8,
+        zIndex: 111,
+        cursor: 'pointer',
+        style: this.map.style
+      });
+
+      let marker = new AMap.Marker({content: ' ', map: this.map});
+
+      this.map.mass.on('mouseover', function (e) {
+        marker.setPosition(e.data.lnglat);
+        marker.setLabel({content: e.data.name})
+      });
+      this.map.mass.on('mouseout', function (e) {
+        marker.setPosition(e.data.lnglat);
+        marker.setLabel({content: ''})
+      });
+      let _this= this;
+      this.map.mass.on('click', function (e) {
+        _this.addInfoWindow(_.filter(_this.vehicle.all,item=>{
+          return item.VEHI_NO===e.data.vehicle;
+        })[0],0);
+      });
+      this.map.mass.setMap(this.map);
+    },
+    addInfoWindow(item,type){
+      //点判断是否消失
+      if(this.map.mapMarker!=null){
+        this.map.mapMarker.setMap(null);
+      }
+      if(type===1){
+        this.map.mapMarker = new AMap.Marker({
+          angle:item.ANGLE,
+          map: this.map,
+          offset: new AMap.Pixel(-14,-18), //相对于基点的偏移位置
+          position: new AMap.LngLat(item.LONGI,item.LATI),
+          draggable: false,  //是否可拖动
+          icon: this.mapIconType(item.ONLINE,item.STATE)   //自定义点标记覆盖物内容
+        });
+      }
+      let txt = "<table><tr><td><b style='color:#3399FF'>"+item.VEHI_NO+"</b></td>" +
+              "<td></td></tr><tr><td><b>[所属公司]</b>："+item.COMP_NAME+"</td></tr>" +
+              "<tr><td><b>[车辆类型]</b>："+item.VT_NAME+"</td></tr>" +
+              "<tr><td><b>[车辆颜色]</b>："+item.VC_NAME+"</td></tr>" +
+              "<tr><td><b>[车辆速度]</b>："+item.SPEED+"</td></tr>" +
+              "<tr><td><b>[车辆状态]</b>："+(item.STATE===0?'空车':(item.STATE===1?'重车':''))+"</td></tr>" +
+              "<tr><td><b>[SIM卡]</b>："+(item.VEHI_SIM==null?"":item.VEHI_SIM)+"</td></tr>" +
+              "<tr><td><b>[经度]</b>："+item.LONGI+"</td></tr><tr><td><b>[纬度]</b>："+item.LATI+"</td></tr>" +
+              "<tr><td><b>[联系人]</b>："+(item.OWN_NAME==null?"":item.OWN_NAME)+"</td></tr>" +
+              "<tr><td><b>[联系电话]</b>："+(item.OWN_TEL==null?"":item.OWN_TEL)+"</td></tr>" +
+              "<tr><td><b>[GPS时间]</b>："+item.STIME+"</td></tr>" +
+              "";
+        let info = [];
+        info.push(txt);
+        this.map.setCenter([item.LONGI,item.LATI]);
+        this.map.infoWindow= new AMap.InfoWindow({
+          offset: new AMap.Pixel(3, 0),
+          content: info.join("</table>")
+        });
+        this.map.infoWindow.open(this.map,[item.LONGI,item.LATI]);
+    },
+    mapIconType(online, carType) {
+      if (online === 1) return offlineCar;
+      else if (carType === 0) return emptyCar;
+      else if (carType === 1) return heavyTruck;
+      else return offlineCar;
+    },
+    handleAreaItemClick(item, index) {
+      //信息弹框判断是否消失
+      if(this.map.infoWindow!=null){
+        this.map.infoWindow.setMap(null);
+      }
+      //信息弹框判断是否消失
+      if(this.map.mapMarker!=null){
+        this.map.mapMarker.setMap(null);
+      }
+      //区域点击事件
+      this.area.type = 1;
+      this.area.selectIndex = index;
+      console.info('handleAreaItemClick:');
+      //多边形是否消失
+      if(this.map.polygon!=null){
+        this.map.polygon.setMap(null);
+      }
+     this.map.path = _.map(item.AREA_COORDINATES.split(";"), item =>{
+        return [item.split(",")[0],item.split(",")[1]];
+      });
+     if(item.AREA_NAME==='北京市'){
+       this.map.setZoomAndCenter(8,this.map.path[0]);
+     }else{
+       this.map.setZoomAndCenter(16,this.map.path[0]);
+     }
+      this.map.polygon = new AMap.Polygon({
+        path: this.map.path,
+        strokeColor: "#FF33FF",
+        strokeWeight: 6,
+        strokeOpacity: 0.2,
+        fillOpacity: 0.4,
+        fillColor: '#1791fc',
+        zIndex: 50,
+      });
+      this.map.add(this.map.polygon);
+      //海量点标记
+      if(this.map.mass!=null){
+        // this.map.mass.setMap(null);
+        this.map.mass.clear();
+      }
+      this.map.points=[];
+      _.each(item.VEHILIST, item=>{
+        _.each(this.vehicle.all,vehicle=>{
+          if(vehicle.VEHI_NO===item.split(";")[0]){
+            let s = {};
+            s.lnglat = [vehicle.LONGI,vehicle.LATI];
+            s.name = vehicle.VEHI_NO+'<br/>'+vehicle.COMP_NAME;
+            if(vehicle.ONLINE===1){
+              s.style = 0;
+            }else if(vehicle.STATE===0){
+              s.style = 1;
+            }else if(vehicle.STATE===1){
+              s.style = 2;
+            }else{
+              s.style = 0;
+            }
+            s.vehicle=vehicle.VEHI_NO;
+            this.map.points.push(s);
+          }
+        });
+      });
+      //海量点
+      this.markerVehicle(this.map.points);
+    },
+    handleRearReturnClick() {
+      this.area.type++;
+      this.area.selectIndex = '';
+    },
+    handleAreaVehicleItemClick(obj) {
+      this.addInfoWindow(_.filter(this.vehicle.all,item=>{
+        return item.VEHI_NO===obj;
+      })[0],0);
+    },
+    handleVehicleQueryClick() {
+      this.vehicle.type = 0;
+      this.vehicle.selectIndex = '';
+    },
+    handleFilterClick(){
+      this.vehicle.type = 0;
+      this.vehicle.data=_.filter(this.vehicle.all,item=>{
+        return item.VEHI_NO.indexOf(this.vehicle.search)>-1;
+      });
+    },
+    handleVehicleReturnClick() {
+      this.vehicle.type = 0;
+      this.vehicle.selectIndex = '';
+    },
+    handleVehicleItemClick(item, index) {
+      this.vehicle.type = 1;
+      this.vehicle.selectIndex = index;
+      //海量点是否消失
+      if(this.map.mass!=null){
+        this.map.mass.clear();
+      }
+      this.addInfoWindow(item,1);
+    },
+    handleShowMapPanelClick() {
+      this.showMapPanel = !this.showMapPanel
+    },
+    initMap() {
+      this.map = new AMap.Map('gaodeMap', {
+        center: this.map.center,
+        resizeEnable: true,
+        zoom: this.map.zoom
+      })
+    },
+    callPoliceClassName(item) {
+      let className = 'tw-table-item';
+      if (item.ALARMNUM === '' || !item.hasOwnProperty("VEHILIST")) return className;
+      return parseInt(item.ALARMNUM) < item.VEHILIST.length ? className + ' tw-item-police' : className
+    }
+  }
+}
+</script>
+
+<style lang="scss" scope>
+.vehicleSearchBar {
+  width: calc(100% - 20px);
+  margin: 10px;
+}
+.tw-map {
+  &-panel {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    width: 350px;
+    height: calc(100% - 140px);
+    border-radius: 8px;
+    .el-tabs__nav-scroll {
+      user-select: none;
+    }
+    &__close {
+      position: absolute;
+      top: 0;
+      right: 2px;
+      display: inline-block;
+      width: 39px;
+      height: 39px;
+      font-size: 26px;
+      line-height: 39px;
+      text-align: center;
+      color: #999999;
+      z-index: 5;
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        color: #e81123;
+      }
+    }
+  }
+}
+.tw-table-item .tw-item-col {
+  &.tw-name {
+    width: calc(100% - 140px);
+  }
+  &.tw-number {
+    width: 70px;
+  }
+  &.tw-address {
+    overflow: hidden;
+    width: calc(100% - 90px);
+    white-space: nowrap;
+  }
+  &.tw-vehicle {
+    width: 90px;
+  }
+}
+
+.tw-list {
+  position: relative;
+  height: calc(100% - 52px);
+  &-item {
+    // height: 40px;
+    padding: 5px 10px;
+    border-bottom: 1px solid #eeeeee;
+    cursor: pointer;
+
+    &__header {
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 24px;
+      color: #333333;
+    }
+    &__wrapper {
+      font-size: 12px;
+      line-height: 18px;
+      color: #999999;
+    }
+  }
+}
+.tw-panel {
+  height: 100%;
+  &-header {
+    padding: 0 5px;
+    font-size: 18px;
+    border-bottom: 1px solid #eeeeee;
+
+    .tw-return {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      text-align: center;
+      cursor: pointer;
+
+      &:not(:last-child) {
+        position: relative;
+        margin-right: 10px;
+        &::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          right: 0;
+          height: 60%;
+          border-right: 1px solid #eeeeee;
+          transform: translateY(-50%);
+        }
+      }
+    }
+
+    .tw-title {
+      display: inline-block;
+      width: calc(100% - 50px);
+      text-align: center;
+      text-indent: -50px;
+    }
+  }
+  &-body {
+    height: calc(100% - 41px);
+  }
+}
+</style>

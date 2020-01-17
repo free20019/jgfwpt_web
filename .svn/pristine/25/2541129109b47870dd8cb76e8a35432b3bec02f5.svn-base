@@ -1,0 +1,322 @@
+<!--无营运数据车辆-->
+<template>
+    <div class="tw-template-wrapper">
+        <el-form :inline="true" :model="query" size="small" class="tw-query-bar">
+            <el-form-item>
+                <el-autocomplete class="inline-input" v-model="query.vehicle" placeholder="车牌号码"
+                                 :fetch-suggestions="queryVehicleSearch" :trigger-on-focus="false"></el-autocomplete>
+            </el-form-item>
+            <el-form-item>
+                <el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
+                                 :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+            </el-form-item>
+            <el-form-item>
+                <el-select v-model="query.area" placeholder="区域">
+                    <el-option v-for="item in getRegionReal" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-select v-model="query.timeType" placeholder="请选择" @change="handleTimeTypeChange">
+                    <el-option v-for="item in timeTypeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-date-picker v-model="query.stime" type="date" :disabled="timeControl" placeholder="开始日期"></el-date-picker>
+            </el-form-item>
+            <el-form-item>
+                <el-date-picker v-model="query.etime" type="date" :disabled="timeControl" placeholder="结束日期"></el-date-picker>
+            </el-form-item>
+            <el-form-item>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleQueryClick">查询</el-button>
+                <el-button type="primary" @click="handleExportClick">导出</el-button>
+                <el-button type="primary" v-if="this.query.timeType===2" @click="handleSendMessageClick">消息下发</el-button>
+            </el-form-item>
+        </el-form>
+        <div class="tw-query-panel">
+            <el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%">
+                <el-table-column type="index" label="序号" width="60"></el-table-column>
+                <el-table-column prop="gsmc" label="公司名称" min-width="180"></el-table-column>
+                <el-table-column prop="area" label="区域" width="240"></el-table-column>
+                <el-table-column prop="cphm" label="车牌号码" min-width="140"></el-table-column>
+                <el-table-column prop="simk" label="SIM卡号" width="140"></el-table-column>
+                <el-table-column prop="lxr" label="联系人" width="120"></el-table-column>
+                <el-table-column prop="lxdh" label="联系电话" width="140"></el-table-column>
+            </el-table>
+            <el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next, total" @current-change="handleTablePageCurrentChange"></el-pagination>
+        </div>
+        <el-dialog :title="dialog.title" :visible.sync="dialog.display" width="700px" @closed="handleDialogClosed">
+            <el-form ref="form" :model="dialog.form" size="small" label-width="80px">
+                <el-form-item label="公司名称">
+                    <el-select v-model="dialog.form.companyName" filterable clearable placeholder="公司名称" style="width: 260px;" @input="handleInputClick">
+                        <el-option
+                                v-for="item in getAllCompanyName"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="联系电话" >
+                    <el-input type="textarea" v-model="dialog.form.selectPhone" placeholder="联系电话(联系人)，联系电话(联系人)，联系电话(联系人)..." style="width: 495px;" :rows="2"></el-input>
+                </el-form-item>
+                <el-form-item label="信息" >
+                    <el-input type="textarea" v-model="dialog.form.message" placeholder="信息" style="width: 495px;" :rows="4"></el-input>
+                </el-form-item>
+                <el-form-item label="车辆">
+                    <el-transfer
+                            filterable
+                            @change="handleTransferChangeClick"
+                            filter-placeholder="请输入搜索内容"
+                            :titles="['未选车辆', '已选车辆']"
+                            v-model="dialog.form.vehicle"
+                            :data="dialog.form.data">
+                    </el-transfer>
+                </el-form-item>
+
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="dialog.display = false">取 消</el-button>
+                <el-button type="primary" @click="handleDialogSaveClick">发 送</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script>
+    import _ from 'underscore'
+    import axios from 'axios'
+    import TreeSelect from '@riophae/vue-treeselect'
+    import moment from 'moment'
+    import {mapGetters} from  'vuex'
+
+    export default {
+        name: "NoOperatingDataVehicle",
+        data() {
+            return {
+                query:{
+                    vehicle: '',
+                    companyName: '',
+                    timeType: 0,
+                    area:'',
+                    stime: '',
+                    etime:''
+                },
+                timeControl: false,
+                timeTypeOptions: [
+                    {label: '自定义时间', value: 0},
+                    {label: '3天时间', value: 1},
+                    {label: '7天时间', value: 2}
+                ],
+                table: {
+                    loading: false,
+                    data: [],
+                    pageSize: 20,
+                    currentPage: 1,
+                    total: 0
+                },
+                dialog: {
+                    title: '',
+                    display: false,
+                    form: {
+                        companyName: '',
+                        vehicle: [],
+                        message:'',
+                        data: [],
+                        allPhone: [],
+                        selectPhone: '',
+                    }
+                },
+            }
+        },
+        mounted() {
+            this.$nextTick(() => {
+                this.query.stime = moment(moment().subtract(1, 'days').format('YYYY-MM-DD'));
+                this.query.etime = moment(moment().subtract(1, 'days').format('YYYY-MM-DD'));
+                this.getNoOperatingData();
+                this.getAdministratorPhoneManagement();
+            });
+        },
+        computed: {
+            ...mapGetters(['getLPNumber', 'getCompanyName','getRegionReal','getAllCompanyName']),
+            filterTableList() {
+                const {data, pageSize, currentPage} = this.table;
+                const pageIndex = currentPage - 1;
+                return _.filter(data, (item, index) => {
+                    return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+                })
+            }
+        },
+        methods: {
+            /*接口*/
+            queryVehicleSearch(query, cb) {
+                if (query.length < 3) cb(null);
+                else
+                    cb(_.filter(this.getLPNumber, item => item.label.indexOf(query) > -1));
+            },
+            queryCompanyNameSearch(query, cb) {
+                cb(_.filter(this.getCompanyName, item => item.label.indexOf(query) > -1));
+            },
+            getAdministratorPhoneManagement(){
+                this.table.loading = true;
+                axios.get('terminal/administratorPhoneManagement', {
+                    baseURL: this.baseURL,
+                    params: {}
+                }).then(res => {
+                    this.dialog.form.allPhone = res.data||[];
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            },
+            getNoOperatingData(){
+                const {vehicle, companyName,area, stime, etime} = this.query;
+                if(!stime||!etime) return this.$message.error('请选择时间！');
+                if((stime&&moment(stime).format('YYYY'))!==(etime&&moment(etime).format('YYYY'))) return this.$message.error('无法跨年查询！');
+                // const {currentPage,pageSize} = this.table;
+                this.table.loading = true;
+                axios.get('terminal/noOperatingData', {
+                    baseURL: this.baseURL,
+                    params: {
+                        vehicle,
+                        companyName,
+                        area,
+                        stime: stime&&moment(stime).format('YYYY-MM-DD'),
+                        etime: etime&&moment(etime).format('YYYY-MM-DD'),
+                        // currentPage,
+                        // pageSize
+                    }
+                }).then(res => {
+                    console.info(res.data);
+                    this.table.data = _.map(res.data, item => {
+                        return {
+                            gsmc: item.COMP_NAME,
+                            cphm: item.VEHI_NO,
+                            area: item.AREA_NAME,
+                            simk: item.VEHI_SIM,
+                            lxr:  item.OWN_NAME,
+                            lxdh: item.OWN_TEL}
+                    });
+                    this.table.total = res.data.length;
+                    this.table.currentPage = 1;
+                    this.table.loading = false;
+                })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            sendMessage(){
+                const {companyName,vehicle, message,selectPhone} = this.dialog.form;
+                if(companyName===''||vehicle.toString()===''||message===''||selectPhone===''){
+                    this.$message.error('请填写完整信息！');
+                    return false;
+                }
+                let mobile =  /^(0|86|17951)?(13[0-9]|15[012356789]|17[01678]|18[0-9]|14[57])[0-9]{8}$/;
+                let phones=selectPhone.replace(/，/g,',').replace(/\(.*?\)/g,'').replace(/[^0-9,]*/g,"").split(",");
+                for (let i = 0; i <phones.length ; i++) {
+                    if (!mobile.test(phones[i])){
+                        this.$message.error('请填写正确手机号码！');
+                        return false;
+                    }
+                }
+                axios.post(this.baseURL+'terminal/sendMessage', {
+                    phone:selectPhone.replace(/，/g,','),
+                    message
+                }).then(res => {
+                    if (res.data.sfdl==='0'){
+                        this.dialog.display = false;
+                        this.$message('发送成功');
+                    }else if (res.data.sfdl==='1'){
+                        this.$message.error(res.data.errordh+'发送失败！');
+                    }
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            },
+            /*事件*/
+            handleTimeTypeChange() {
+                switch (this.query.timeType) {
+                    case 0:
+                        this.timeControl = false;
+                        break;
+                    case 1:
+                        this.timeControl = true;
+                        this.query.stime = moment(moment().subtract(4, 'days').format('YYYY-MM-DD'));
+                        this.query.etime = moment(moment().subtract(1, 'days').format('YYYY-MM-DD'));
+                        break;
+                    case 2:
+                        this.getNoOperatingData();
+                        this.timeControl = true;
+                        this.query.stime = moment(moment().subtract(8, 'days').format('YYYY-MM-DD'));
+                        this.query.etime = moment(moment().subtract(1, 'days').format('YYYY-MM-DD'));
+                        break;
+                }
+            },
+            handleQueryClick() {
+                this.table.currentPage = 1;
+                this.getNoOperatingData();
+            },
+            handleExportClick() {
+                const {vehicle, companyName,area, stime, etime} = this.query;
+                if(!stime||!etime) return this.$message.error('请选择时间！');
+                if((stime&&moment(stime).format('YYYY'))!==(etime&&moment(etime).format('YYYY'))) return this.$message.error('无法跨年查询！');
+                this.$confirm('是否需要导出?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    window.open(`${this.baseURL}terminal/noOperatingDatadc?vehicle=${vehicle}&companyName=${companyName}&area=${area}&stime=${stime && moment(stime).format('YYYY-MM-DD')}&etime=${etime && moment(etime).format('YYYY-MM-DD')}`);
+                }).catch(() => {});
+            },
+            handleTablePageCurrentChange(index) {
+                this.table.currentPage = index;
+                // this.getNoOperatingData();
+            },
+            handleSendMessageClick(){
+                this.dialog.title = '短息发送';
+                this.dialog.display = true;
+            },
+            handleDialogSaveClick() {
+                this.sendMessage();
+            },
+            handleDialogClosed() {
+                this.dialog.title = '';
+                this.dialog.form.companyName = '';
+                this.dialog.form.vehicle = [];
+                this.dialog.form.message = '';
+                this.dialog.form.data = [];
+                this.dialog.form.selectPhone= '';
+            },
+            handleInputClick(){
+                this.dialog.form.data = [];
+                this.dialog.form.vehicle = [];
+                const {data,vehicle,companyName,allPhone} = this.dialog.form;
+                let list=[];
+                _.map(this.table.data, item =>{
+                    if(this.dialog.form.companyName===item.gsmc){
+                        data.push({key: item.cphm, label: item.cphm});
+                        vehicle.push(item.cphm);
+                    }
+                });
+                _.map(allPhone, item =>{
+                    if(this.dialog.form.companyName===item.COMPANY_NAME){
+                        list.push(item.MANAGE_PHONE+'('+item.MANAGE_PERSON+')');
+                    }
+                });
+                this.dialog.form.selectPhone=list.toString();
+                this.dialog.form.message = companyName===''?'':companyName+'你好,你公司车辆('+vehicle.toString()+')已经7天未营运，请及时处理'
+            },
+            handleTransferChangeClick(){
+                const {vehicle,companyName} = this.dialog.form;
+                this.dialog.form.message = companyName===''?'':companyName+'你好,你公司车辆('+vehicle.toString()+')已经7天未营运，请及时处理'
+            }
+        },
+    }
+</script>
+
+<style scoped>
+
+</style>

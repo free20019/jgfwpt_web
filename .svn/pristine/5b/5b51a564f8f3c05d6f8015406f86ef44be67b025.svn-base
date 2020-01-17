@@ -1,0 +1,394 @@
+<!--重点区域管理-->
+<template>
+    <div class="tw-template-wrapper">
+        <div class="tw-template-body">
+            <div class="tw-map">
+                <el-amap ref="map" vid="amap" :center="map.center" :zoom="map.zoom" :plugin="map.plugin" :events="map.events" :amap-manager="amapManager">
+                    <template v-for="(polygon, index) in map.polygons">
+                        <el-amap-polygon  :vid="index" :path="polygon.path" :draggable="polygon.draggable" :events="polygon.events"></el-amap-polygon>
+                        <el-amap-text :text="polygon.title" :position="polygon.position" ></el-amap-text>
+                    </template>
+                </el-amap>
+            </div>
+        </div>
+        <div class="tw-template-footer">
+            <el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 52px)" @row-click="handleTableRowClick" style="width: 100%; margin-bottom: 10px;">
+                <el-table-column :resizable="false" width="60" align="center">
+                    <template slot="header" slot-scope="scope">
+                        <el-button size="mini" type="text" icon="el-icon-plus" @click="handleTableAddClick"></el-button>
+                    </template>
+                    <template slot-scope="scope">
+                        <el-button size="mini" icon="el-icon-delete" type="text" @click="handleTableDeleteClick(scope.row)"></el-button>
+                        <el-button size="mini" icon="el-icon-edit" type="text" @click="handleTableEditClick(scope.row)"></el-button>
+                    </template>
+                </el-table-column>
+                <el-table-column type="index" label="序号" width="60" :resizable="false"></el-table-column>
+                <el-table-column prop="qymc" label="区域名称" width="280" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="qymj" label="区域面积" width="180" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="qyybjs" label="区域预报警数" width="180" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="qyms" label="区域描述" min-width="160" :resizable="false" show-overflow-tooltip></el-table-column>
+            </el-table>
+            <el-pagination background :page-size="table.pageSize" :current-page="table.currentPage" :total="table.total" layout="prev, pager, next,total" @current-change="handleTablePageCurrentChange"></el-pagination>
+        </div>
+        <el-dialog :title="dialog.title" :visible.sync="dialog.display" width="800px" @closed="handleDialogClosed">
+            <div class="tw-template-layout">
+                <div class="tw-template-left">
+                    <el-form ref="form" :model="dialog.form" size="small" label-width="80px">
+                        <el-form-item label="区域名称">
+                            <el-input v-model="dialog.form.areaName" placeholder="区域名称" style="width: 200px;"></el-input>
+                        </el-form-item>
+                        <el-form-item label="区域范围">
+                            <el-input v-model="dialog.form.areaRange" readonly placeholder="区域范围" @click.native="handleIntervalFocus" style="width: 200px;"></el-input>
+                        </el-form-item>
+                        <el-form-item label="预报警数">
+                            <el-input v-model="dialog.form.areaWarning" placeholder="区域预报警数" style="width: 200px;"></el-input>
+                        </el-form-item>
+                        <el-form-item label="区域面积">
+                            <el-input v-model="dialog.form.areaSize" readonly placeholder="区域面积" style="width: 200px;"></el-input>
+                        </el-form-item>
+                        <el-form-item label="区域描述">
+                            <el-input v-model="dialog.form.areaDesc" placeholder="区域描述" style="width: 200px;" type="textarea"></el-input>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="tw-template-body">
+                    <el-amap ref="dialog-map" vid="dialog-amap" :center="dialog.map.center" :zoom="dialog.map.zoom" :plugin="dialog.map.plugin" :events="dialog.map.events">
+                        <el-amap-polygon v-for="(polygon, index) in dialog.map.polygons" :vid="index" :path="polygon.path" :draggable="polygon.draggable" :events="polygon.events"></el-amap-polygon>
+                    </el-amap>
+                </div>
+            </div>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="dialog.display = false">取 消</el-button>
+                <el-button type="primary" @click="handleDialogSaveClick">提 交</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script>
+    import _ from 'underscore'
+    import axios from 'axios'
+    import { AMapManager } from 'vue-amap';
+
+    export default {
+        name: "KeyRegionalManagement",
+        data() {
+            const _this = this;
+            return {
+                amapManager: new AMapManager(),
+                map: {
+                    center: [120.170076, 30.277559],
+                    zoom: 15,
+                    events:{},
+                    plugin:[],
+                    polygons: [],
+                    // markers:[],
+                    texts: [
+                        {
+                            position: [120.170972,30.280553],
+                            text: 'hello world',
+                            offset: [0, 0],
+                            events: {
+                                click: () => {
+                                    alert('click text');
+                                }
+                            }
+                        }
+                    ]
+                },
+                table: {
+                    selectItem: {},
+                    loading: false,
+                    data: [],
+                    pageSize: 1000,
+                    currentPage: 1,
+                    total: 0
+                },
+                dialog: {
+                    title: '',
+                    display: false,
+                    map: {
+                        checked: false,
+                        center: [120.170076, 30.277559],
+                        zoom: 14,
+                        polygons: [],
+                        events:{
+                            click(e) {
+                                const {checked, polygons} = _this.dialog.map;
+                                if (checked) {
+                                    let { lng, lat } = e.lnglat;
+                                    console.info('amap-click:', e, lng, lat);
+                                    if (polygons.length === 0) _this.dialog.map.polygons.push({
+                                        draggable: false,
+                                        path: [],
+                                        events: {}
+                                    });
+                                    console.info('amap-click:', polygons.length);
+                                    _this.dialog.map.polygons[polygons.length - 1].path.push([lng, lat]);
+                                }
+                            },
+                            dblclick(e) {
+                                const {checked} = _this.dialog.map;
+                                if(checked){
+                                    _this.dialog.map.checked = false;
+                                    _this.dialog.form.areaRange = _this.dialog.map.polygons[0].path.join(';');
+                                    _this.dialog.form.areaSize = Math.round(AMap.GeometryUtil.ringArea(_this.dialog.map.polygons[0].path))+'平方米';
+                                }
+                            }
+                        },
+                        plugin:[]
+                    },
+                    form: {
+                        areaName: '',
+                        areaRange: '',
+                        areaWarning: '10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;',
+                        areaDesc: '',
+                        areaSize: '',
+                    }
+                }
+            }
+        },
+        mounted() {
+            this.$nextTick(() => {
+                this.getArea();
+            });
+        },
+        computed: {
+            filterTableList() {
+                const {data, pageSize, currentPage} = this.table;
+                const pageIndex = currentPage - 1;
+                return _.filter(data, (item, index) => {
+                    return  index >= pageIndex * pageSize && index < currentPage * pageSize;
+                })
+            }
+        },
+        methods: {
+            /*接口*/
+            getArea(){
+                this.table.loading = true;
+                this.map.polygons=[];
+                axios.get('keyArea/findarea', {
+                    baseURL: this.baseURL,
+                    params: {}
+                }).then(res => {
+                    this.table.data = _.map(res.data, item => {
+                        return {
+                            id:item.AREA_ID,
+                            qymc: item.AREA_NAME,
+                            qymj: item.AREA_SIZE,
+                            qyybjs: item.ALARMNUM,
+                            qyybj: item.ALARM,
+                            qyms: item.AREA_DESCRIBE,
+                            qyfw: item.AREA_COORDINATES,
+                        }
+                    });
+                    _.each(res.data, item=> {
+                        this.map.polygons.push({
+                            draggable: false,
+                            path: [],
+                            events: {},
+                            position: [item.AREA_COORDINATES.split(";")[0].split(",")[0],item.AREA_COORDINATES.split(";")[0].split(",")[1]],
+                            title: item.AREA_NAME
+                        });
+                        _.each(item.AREA_COORDINATES.split(";"), item => {
+                            this.map.polygons[this.map.polygons.length - 1].path.push([item.split(",")[0],item.split(",")[1]])
+                        });
+                    });
+                    this.table.total = this.table.data.length;
+                    this.table.currentPage = 1;
+                    this.table.loading = false;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            },
+            getAddArea(){
+                const {areaName, areaRange,areaWarning, areaSize, areaDesc} = this.dialog.form;
+                if(areaName===''||areaRange.toString()===''||areaWarning===''||areaSize===''||areaDesc===''){
+                    this.$message.error('请填写完整信息！');
+                    return false;
+                }
+                axios.get('keyArea/addarea', {
+                    baseURL: this.baseURL,
+                    params: {name:areaName,describe:areaDesc,coordinates:areaRange,size:areaSize,warning:areaWarning}
+                }).then(res => {
+                    if(res.data>0){
+                        this.$message({message: "操作成功!", type: 'success'});
+                        this.dialog.display = false;
+                        this.getArea();
+                    }else if (res.data===0){
+                        this.$message.error('操作失败！');
+                    }else if (res.data===-1){
+                        this.$message.error('该已添加！');
+                    }
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            },
+            getUpdateArea(){
+                const item =this.table.selectItem;
+                const {areaName, areaRange,areaWarning, areaSize, areaDesc} = this.dialog.form;
+                if(areaName===''||areaRange.toString()===''||areaWarning===''||areaSize===''||areaDesc===''){
+                    this.$message.error('请填写完整信息！');
+                    return false;
+                }
+                axios.get('keyArea/updatearea', {
+                    baseURL: this.baseURL,
+                    params: {name:areaName,describe:areaDesc,coordinates:areaRange,size:areaSize,warning:areaWarning,id:item.id}
+                }).then(res => {
+                    if(res.data>0){
+                        this.$message({message: "操作成功!", type: 'success'});
+                        this.dialog.display = false;
+                        this.getArea();
+                    }else if (res.data===0){
+                        this.$message.error('操作失败！');
+                    }else if (res.data===-1){
+                        this.$message.error('该已添加！');
+                    }
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            },
+            getDeleteArea(item){
+                this.$confirm('是否删除?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    axios.get('keyArea/deletearea', {
+                        baseURL: this.baseURL,
+                        params: {id:item.id}
+                    }).then(res => {
+                        if(res.data>0){
+                            this.$message({message: "操作成功!", type: 'success'});
+                            this.getArea();
+                        }else{
+                            this.$message.error('操作失败！');
+                        }
+                    }).catch(function (error) {
+                        console.error(error);
+                    });
+                }).catch(() => {
+
+                });
+            },
+            /*事件*/
+            handleQueryClick() {},
+            handleTableRowClick(item) {
+                this.map.polygons=[];
+                this.map.zoom=15;
+                this.map.center=[item.qyfw.split(";")[0].split(",")[0],item.qyfw.split(";")[0].split(",")[1]];
+                this.map.polygons.push({
+                    draggable: false,
+                    path: [],
+                    events: {},
+                    position: [item.qyfw.split(";")[0].split(",")[0],item.qyfw.split(";")[0].split(",")[1]],
+                    title: item.qymc
+                });
+                _.each(item.qyfw.split(";"), item => {
+                    this.map.polygons[this.map.polygons.length - 1].path.push([item.split(",")[0],item.split(",")[1]])
+                });
+            },
+            handleTableAddClick() {
+                this.dialog.title = '添加';
+                this.dialog.display = true;
+            },
+            handleTableEditClick(item) {
+                this.dialog.title = '修改';
+                this.table.selectItem = item;
+                this.dialog.display = true;
+                this.dialog.form.areaName = item.qymc;
+                this.dialog.form.areaRange = item.qyfw;
+                this.dialog.form.areaWarning = item.qyybj;
+                this.dialog.form.areaDesc = item.qyms;
+                this.dialog.form.areaSize = item.qymj;
+                this.dialog.map.polygons=[];
+                this.dialog.map.polygons.push({
+                    draggable: false,
+                    path: [],
+                    events: {}
+                });
+                this.dialog.map.center=[item.qyfw.split(";")[0].split(",")[0],item.qyfw.split(";")[0].split(",")[1]];
+                _.each(item.qyfw.split(';'),item =>{
+                    this.dialog.map.polygons[this.dialog.map.polygons.length - 1].path.push([item.split(',')[0], item.split(',')[1]]);
+                });
+            },
+            handleTableDeleteClick(item) {
+                this.getDeleteArea(item);
+            },
+            handleDialogSaveClick() {
+                if(this.dialog.title === '修改'){
+                    this.getUpdateArea();
+                }else if(this.dialog.title === '添加'){
+                    this.getAddArea();
+                }
+            },
+            handleDialogClosed() {
+                this.dialog.title = '';
+                this.dialog.form.areaName = '';
+                this.dialog.form.areaRange = '';
+                this.dialog.form.areaWarning = '10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;10;';
+                this.dialog.form.areaDesc = '';
+                this.dialog.form.areaSize = '';
+                this.dialog.map.polygons=[];
+            },
+            handleIntervalFocus() {
+                if(this.dialog.form.areaRange!==''){
+                    this.$confirm('是否重新画区域?', '提示', {
+                        confirmButtonText: '是',
+                        cancelButtonText: '否',
+                        cancelButtonClass: 'el-button--danger',
+                        closeOnClickModal: false,
+                        type: 'info',
+                        center: true
+                    }).then(() => {
+                        this.dialog.map.checked = true;
+                        this.dialog.map.polygons=[];
+                        this.dialog.form.areaRange='';
+                        this.dialog.form.areaSize='';
+                    }).catch(() => {
+                    });
+                }else{
+                    this.dialog.map.checked = true;
+                    this.dialog.map.polygons=[];
+                    this.dialog.form.areaRange='';
+                    this.dialog.form.areaSize='';
+                }
+            },
+            handleTablePageCurrentChange(index) {
+                this.table.currentPage = index;
+            },
+        }
+    }
+</script>
+
+<style lang="scss" scoped>
+    $footerHeader: 300px;
+    $leftWidth: 300px;
+    .tw-template {
+        &-layout {
+            position: relative;
+            height: 300px;
+            .tw-template-body {
+                width: calc(100% - #{$leftWidth});
+                height: 100%;
+                margin-left: $leftWidth;
+                border-bottom: none;
+            }
+        }
+        &-left{
+            width: $leftWidth;
+            height: 100%;
+        }
+
+        &-body{
+            height: calc(100% - #{$footerHeader} - 1px);
+            border-bottom: 1px solid #eeeeee;
+        }
+        &-footer{
+            height: $footerHeader;
+        }
+    }
+</style>
