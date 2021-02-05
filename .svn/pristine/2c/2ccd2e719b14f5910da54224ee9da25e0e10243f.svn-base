@@ -1,4 +1,4 @@
-<!--数据接入审批-->
+<!--爱心业务用车记录审批-->
 <template>
     <div class="tw-template-wrapper">
         <el-form :inline="true" :model="query" size="small" class="tw-query-bar">
@@ -9,6 +9,12 @@
             <el-form-item>
                 <el-autocomplete class="inline-input" v-model="query.companyName" placeholder="公司名称"
                                  :fetch-suggestions="queryCompanyNameSearch" :trigger-on-focus="false"></el-autocomplete>
+            </el-form-item>
+            <el-form-item>
+                <el-input v-model="query.phone" placeholder="联系电话"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-input v-model="query.address" placeholder="详细地址" ></el-input>
             </el-form-item>
             <el-form-item>
                 <el-select v-model="query.area" placeholder="区域">
@@ -28,31 +34,36 @@
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" @click="handleQueryClick">查询</el-button>
+                <el-button type="primary" @click="handleAuditTrueClick">批量通过</el-button>
+                <el-button type="primary" @click="handleAuditFalseClick">批量不通过</el-button>
+                <el-button type="primary" @click="handleExportClick">导出</el-button>
             </el-form-item>
         </el-form>
         <div class="tw-query-panel">
-            <el-table :data="filterTableList" v-loading="table.loading" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+            <el-table :data="filterTableList" v-loading="table.loading" ref="multipleTable"  @selection-change="handleSelectionChange" border size="small" height="calc(100% - 42px)" style="width: 100%; margin-bottom: 10px;">
+                <el-table-column type="selection" width="55"></el-table-column>
                 <el-table-column type="index" label="序号" width="60" align="center" :resizable="false" fixed></el-table-column>
-                <el-table-column prop="VEHICLE_NO" label="车号" width="140" align="center" fixed>
-                    <template slot-scope="scope">
-                        <span v-if="handleTimeOutClick(scope.row)" style="color: greenyellow">{{scope.row.VEHICLE_NO}}</span>
-                        <span v-else>{{scope.row.VEHICLE_NO}}</span>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="COMPANY_NAME" label="公司" width="180" align="center" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="DB_TIME" label="生成时间" width="200" align="center"></el-table-column>
+                <el-table-column prop="COMMIT_PERSON" label="录入人员" width="120" align="center"></el-table-column>
+                <el-table-column prop="CUST_NAME" label="客户姓名" width="120" align="center"></el-table-column>
+                <el-table-column prop="CUST_TEL" label="手机号码" width="120" align="center"></el-table-column>
+                <el-table-column prop="JSYXM" label="驾驶员姓名" width="120" align="center"></el-table-column>
+                <el-table-column prop="CF" label="车费金额" width="120" align="center"></el-table-column>
+                <el-table-column prop="DDQY" label="调度区域" width="120" align="center"></el-table-column>
+                <el-table-column prop="ADDRESS" label="详细地址" width="200" align="center" :show-overflow-tooltip="true"></el-table-column>
+                <el-table-column prop="DEST_ADDRESS" label="目的地址" width="200" align="center" :show-overflow-tooltip="true"></el-table-column>
+                <el-table-column prop="DISP_TIME" label="用车时间" width="200" align="center"></el-table-column>
+                <el-table-column prop="VEHI_NO1" label="所派车辆" width="120" align="center"></el-table-column>
                 <el-table-column prop="AREA_NAME" label="区域"  align="center" width="140"></el-table-column>
-                <el-table-column prop="VEHICLE_TYPE" label="车型" width="140" align="center" show-overflow-tooltip></el-table-column>
-                <el-table-column prop="VEHICLE_COLOR" label="车辆颜色" min-width="140" align="center" :resizable="false"></el-table-column>
-                <el-table-column prop="FUEL_TYPE" label="燃料类型" width="140"></el-table-column>
-                <el-table-column prop="TERMINAL_TYPE" label="终端类型" width="140" align="center"></el-table-column>
-                <el-table-column prop="TERMINAL_MODEL" label="终端型号" width="140" align="center"></el-table-column>
-                <el-table-column prop="OWNER_NAME" label="车主姓名" width="140" align="center"></el-table-column>
-                <el-table-column prop="OWNER_PHONE" label="电话号码" width="140" align="center"></el-table-column>
-                <el-table-column prop="DAY_PERSON" label="白班姓名" width="140" header-align="center" show-overflow-tooltip></el-table-column>
-                <el-table-column prop="NIGHT_PERSON" label="夜班姓名" min-width="140" align="center" :resizable="false"></el-table-column>
-                <el-table-column prop="DAY_PHONE" label="白班电话" width="140" align="center"></el-table-column>
-                <el-table-column prop="NIGHT_PHONE" label="夜班电话" width="140" align="center"></el-table-column>
-                <el-table-column prop="APPLICATION_DATE" label="申请时间" width="140" align="center"></el-table-column>
+                <el-table-column prop="SJDH1" label="司机联系方式" width="120" align="center"></el-table-column>
+                <el-table-column prop="SIM_NUM1" label="SIM卡" width="120" align="center"></el-table-column>
+                <el-table-column prop="COMP_NAME1" label="所属公司" width="240" align="center" :show-overflow-tooltip="true"></el-table-column>
+                <el-table-column prop="YCMS" label="用车模式" width="120" align="center"></el-table-column>
+                <el-table-column prop="TSRQ" label="特殊人群" width="120" align="center"></el-table-column>
+                <el-table-column prop="PTQK" label="陪同情况" width="120" align="center"></el-table-column>
+                <el-table-column prop="YCXQ" label="用车需求" width="120" align="center"></el-table-column>
+                <el-table-column prop="NOTE" label="附加信息" width="120" align="center" :show-overflow-tooltip="true"></el-table-column>
+                <el-table-column prop="SZQY" label="所在区域" width="120" align="center"></el-table-column>
                 <el-table-column prop="AUDIT_DATE" label="审核时间" width="140" align="center"></el-table-column>
                 <el-table-column prop="REAL_NAME" label="审核人员" width="140" align="center"></el-table-column>
                 <el-table-column prop="AUDIT_REASON" label="审核原因" width="140" header-align="center" show-overflow-tooltip></el-table-column>
@@ -95,18 +106,21 @@
     import {formatDateTime} from "../../assets/js/util";
 
     export default {
-        name: "DataAccessApproval",
+        name: "LoveApprovalBusinessVehicleUseRecord",
         data() {
             return {
                 query:{
                     vehicle: '',
                     companyName: '',
+                    phone:'',
+                    address:'',
                     area:'',
                     stime: '',
                     etime:'',
                     type: ''
                 },
                 table: {
+                    multipleSelection: [],
                     loading: false,
                     data: [],
                     selectItem: {},
@@ -130,7 +144,7 @@
             this.$nextTick(() => {
                 this.query.stime = moment().format('YYYY-MM-DD 00:00:00');
                 this.query.etime = moment().format('YYYY-MM-DD 23:59:59');
-                this.getDataAccessApproval();
+                this.getLoveApprovalBusinessVehicleUseRecord();
             });
         },
         computed: {
@@ -144,6 +158,29 @@
             }
         },
         methods: {
+            handleSelectionChange(val) {
+                this.table.multipleSelection = val;
+            },
+            handleAuditTrueClick(){
+              if(this.table.multipleSelection.length===0) return this.$message.error('请先选中至少一条！！');
+              if(this.table.multipleSelection.length===1){
+                  this.handleReviewTrueClick(this.table.multipleSelection[0])
+              }else{
+                  this.dialog.display = true;
+                  this.dialog.title = '审批';
+                  this.dialog.flag = true;
+              }
+            },
+            handleAuditFalseClick(){
+              if(this.table.multipleSelection.length===0) return this.$message.error('请先选中至少一条！！');
+                if(this.table.multipleSelection.length===1){
+                    this.handleReviewFalseClick(this.table.multipleSelection[0])
+                }else{
+                    this.dialog.display = true;
+                    this.dialog.title = '审批';
+                    this.dialog.flag = false;
+                }
+            },
             /*接口*/
             queryVehicleSearch(query, cb) {
                 if (query.length < 3) cb(null);
@@ -155,15 +192,17 @@
             queryJobNumberSearch(query, cb) {
                 cb(_.filter(this.getJobNumber, item => item.label.indexOf(query) > -1));
             },
-            getDataAccessApproval(){
+            getLoveApprovalBusinessVehicleUseRecord(){
                 let status=0;
                 this.table.loading = true;
-                const {vehicle, companyName, area, stime, etime, type} = this.query;
-                axios.get('area/dataAccess', {
+                const {vehicle, companyName,phone,address, area, stime, etime, type} = this.query;
+                axios.get('area/loveApproval', {
                     baseURL: this.baseURL,
                     params: {
                         vehicle,
                         companyName,
+                        phone,
+                        address,
                         area,
                         stime:stime && formatDateTime(stime),
                         etime:etime && formatDateTime(etime),
@@ -182,13 +221,17 @@
             },
             getTransferAudit(){
                 const {jobNum, reason} = this.dialog.form;
-                const item =this.table.selectItem;
+                // const item =this.table.selectItem;
+                let ids = _.map(this.table.multipleSelection,item=>{
+                    return item.DISP_ID;
+                });
                 if(!jobNum) return this.$message.error('请选择工号！');
                 const {flag} = this.dialog;
-                axios.get('area/dataAccessAudit', {
+                axios.get('area/loveApprovalAudit', {
                     baseURL: this.baseURL,
                     params: {
-                        id:item.ID,
+                        // id:item.DISP_ID,
+                        id:ids.toString(),
                         jobNum,
                         reason:flag===true?"":reason,
                         issh:flag===true?"0":"1"}
@@ -196,7 +239,7 @@
                     if(res.data>0){
                         this.$message({message: "操作成功!", type: 'success'});
                         this.dialog.display = false;
-                        this.getDataAccessApproval();
+                        this.getLoveApprovalBusinessVehicleUseRecord();
                     }else{
                         this.$message.error('操作失败！');
                     }
@@ -204,12 +247,25 @@
                     console.error(error);
                 });
             },
+            handleExportClick() {
+                const {vehicle, companyName,phone,address, area, stime, etime, type} = this.query;
+                this.$confirm('是否需要导出?', '提示', {
+                    confirmButtonText: '是',
+                    cancelButtonText: '否',
+                    cancelButtonClass: 'el-button--danger',
+                    closeOnClickModal: false,
+                    type: 'info',
+                    center: true
+                }).then(() => {
+                    window.open(`${this.baseURL}area/loveApprovalExcel?vehicle=${vehicle}&companyName=${companyName}&phone=${phone}&address=${address}&area=${area}&stime=${stime && formatDateTime(stime)}&etime=${etime && formatDateTime(etime)}&type=${type}`);
+                }).catch(() => {});
+            },
             /*事件*/
             handleJobNumberSelect(item) {
                 this.dialog.form.jobNum = item.id
             },
             handleQueryClick() {
-                this.getDataAccessApproval();
+                this.getLoveApprovalBusinessVehicleUseRecord();
             },
             handleDialogSaveClick() {
                 this.getTransferAudit();
@@ -227,6 +283,8 @@
                 this.dialog.form.jobNumber = item.USER_NAME;
                 this.dialog.form.reason = item.AUDIT_REASON;
                 this.table.selectItem = item;
+                this.$refs.multipleTable.clearSelection();
+                this.$refs.multipleTable.toggleRowSelection(this.table.selectItem);
                 this.dialog.display = true;
                 this.dialog.title = '审批';
                 this.dialog.flag = true;
@@ -236,6 +294,8 @@
                 this.dialog.form.jobNumber = item.USER_NAME;
                 this.dialog.form.reason = item.AUDIT_REASON;
                 this.table.selectItem = item;
+                this.$refs.multipleTable.clearSelection();
+                this.$refs.multipleTable.toggleRowSelection(this.table.selectItem);
                 this.dialog.display = true;
                 this.dialog.title = '审批';
                 this.dialog.flag = false;
@@ -243,9 +303,6 @@
             handleTablePageCurrentChange(index) {
                 this.table.currentPage = index;
             },
-            handleTimeOutClick(item){
-                return item.AUDIT_STATUS==='未审核'&&moment().diff(item.APPLICATION_DATE,'days')>=3;
-            }
         }
     }
 </script>
